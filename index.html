@@ -5,11 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dreamdex — 디지털 무의식 보관소</title>
   <meta name="description" content="꿈은 사라지는 기록이 아니라 수집 가능한 데이터이다. 꿈을 기록하면 장소·인물·상황이 자동으로 분류되어 도감으로 수집되는 꿈 아카이브 서비스.">
-  <link rel="stylesheet" href="css/styles.css?v=7">
+  <link rel="stylesheet" href="css/styles.css?v=144">
   <!-- 통계 차트용 Chart.js (없어도 폴백 막대그래프로 동작) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
 </head>
 <body>
+  <!-- 배경 패턴 레이어 (설정에서 선택) -->
+  <div id="bgPattern" aria-hidden="true"></div>
+  <!-- 배경 효과 레이어 (별빛·유성우·오로라) -->
+  <div id="bgEffect" aria-hidden="true"></div>
+
   <!-- 온보딩 영역 (필요 시 표시) -->
   <div id="onboardHost" style="display:none"></div>
 
@@ -45,7 +50,6 @@
           <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           <span>꿈 기록</span></a>
 
-        <div class="nav-label">수집과 탐험</div>
         <div class="nav-section">
           <a class="nav-item" data-route="dex" href="#/dex">
             <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5A1.5 1.5 0 0 1 4.5 3H11v16H4.5A1.5 1.5 0 0 0 3 20.5z"/><path d="M21 4.5A1.5 1.5 0 0 0 19.5 3H13v16h6.5a1.5 1.5 0 0 1 1.5 1.5z"/></svg>
@@ -74,23 +78,30 @@
         <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10.5 9-7 9 7"/><path d="M5 9.2V20h14V9.2"/><path d="M10 20v-6h4v6"/></svg>홈</a>
       <a class="tab" data-route="dreams" href="#/dreams">
         <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>아카이브</a>
-      <a class="tab cta" data-route="new" href="#/new"><span class="ic">
-        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>기록</a>
       <a class="tab" data-route="dex" href="#/dex">
         <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5A1.5 1.5 0 0 1 4.5 3H11v16H4.5A1.5 1.5 0 0 0 3 20.5z"/><path d="M21 4.5A1.5 1.5 0 0 0 19.5 3H13v16h6.5a1.5 1.5 0 0 1 1.5 1.5z"/></svg>도감</a>
-      <a class="tab" data-route="explore" href="#/stats">
-        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13 13 8.5 15.5 11 11 15.5 8.5"/></svg>탐험</a>
+      <a class="tab" data-route="stats" href="#/stats">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M3 20h18"/></svg>통계</a>
+      <a class="tab" data-route="map" href="#/map">
+        <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="7" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><path d="M7 7h10"/><path d="m6.2 8.7 5 6.6"/><path d="m17.8 8.7-5 6.6"/></svg>지도</a>
     </nav>
+
+    <!-- 모바일 플로팅 기록 버튼 -->
+    <a class="fab-new" data-route="new" href="#/new" aria-label="꿈 기록">
+      <svg class="nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+    </a>
   </div>
 
   <!-- 스크립트 로드 순서: 데이터 → 로직 → 시각화 → 뷰 → 라우터 -->
-  <script src="js/dictionary.js?v=7"></script>
-  <script src="js/store.js?v=7"></script>
-  <script src="js/classify.js?v=7"></script>
-  <script src="js/sampledata.js?v=7"></script>
-  <script src="js/icons.js?v=7"></script>
-  <script src="js/charts.js?v=7"></script>
-  <script src="js/views.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/dictionary.js?v=143"></script>
+  <script src="js/store.js?v=143"></script>
+  <script src="js/classify.js?v=143"></script>
+  <script src="js/interpret.js?v=143"></script>
+  <script src="js/sampledata.js?v=143"></script>
+  <script src="js/icons.js?v=143"></script>
+  <script src="js/share.js?v=143"></script>
+  <script src="js/charts.js?v=143"></script>
+  <script src="js/views.js?v=143"></script>
+  <script src="js/app.js?v=143"></script>
 </body>
 </html>

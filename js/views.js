@@ -81,6 +81,59 @@
     });
   }
 
+  /* ===================== 꿈 내보내기/공유 시트 ===================== */
+  function openShareSheet(dream) {
+    var host = document.createElement('div');
+    host.className = 'modal-host';
+    host.innerHTML =
+      '<div class="modal share-sheet" role="dialog" aria-modal="true">' +
+      '<h3>이 꿈 내보내기</h3>' +
+      '<div class="share-opts">' +
+        '<button class="btn" data-act="text">' + global.Icons.ui('archive', { size: 16 }) + '<span>텍스트 복사</span></button>' +
+        '<button class="btn" data-act="image">' + global.Icons.ui('star', { size: 16 }) + '<span>이미지로 저장</span></button>' +
+      '</div>' +
+      '<div class="modal-actions"><button class="btn ghost" data-act="close">닫기</button></div>' +
+      '</div>';
+    document.body.appendChild(host);
+    function close() { if (host.parentNode) host.parentNode.removeChild(host); }
+    host.addEventListener('click', function (e) {
+      if (e.target === host) { close(); return; }
+      var btn = e.target.closest('[data-act]');
+      if (!btn) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'close') { close(); }
+      else if (act === 'text') { copyDreamText(dream); close(); }
+      else if (act === 'image') { saveDreamImage(dream); close(); }
+    });
+  }
+
+  function copyDreamText(dream) {
+    var txt = global.Share.toText(dream);
+    function done() { toast(tmsg('check', '텍스트를 복사했어요.')); }
+    if (global.navigator.clipboard && global.navigator.clipboard.writeText) {
+      global.navigator.clipboard.writeText(txt).then(done, function () { fallbackCopy(txt); done(); });
+    } else { fallbackCopy(txt); done(); }
+  }
+  function fallbackCopy(txt) {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+  }
+  function saveDreamImage(dream) {
+    global.Share.toImage(dream).then(function (blob) {
+      if (!blob) { toast(tmsg('warn', '이미지를 만들지 못했어요.')); return; }
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      var safe = (dream.title || '꿈').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || '꿈';
+      a.href = url; a.download = '꿈-' + safe + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast(tmsg('check', '이미지를 저장했어요.'));
+    });
+  }
+
   /* ===================== 키워드 표시 도우미 ===================== */
   // 꿈에 저장된 keyword id 중 현재 해금 상태에서 "보여도 되는" 것만 이름으로 변환
   function visibleKeywords(keywords, unlock) {
@@ -141,26 +194,34 @@
     var stats = Classify.buildStats(dreams);
     var settings = Store.getSettings();
     var next = Classify.nextMilestone(dreams.length);
-
     var hello = settings.nickname ? esc(settings.nickname) + '님의 ' : '';
-
     var todayIso = new Date().toISOString().slice(0, 10);
+    var hero =
+      '<section class="dd-hero view-enter">' +
+        '<div class="dd-hero-art" aria-hidden="true">' + global.Icons.skyBand() + '</div>' +
+        '<div class="dd-hero-copy">' +
+          '<div class="dd-hero-date">' + fmtDate(todayIso) + '</div>' +
+          '<h1>' + hello + '보관소</h1>' +
+          '<p>오늘도 꿈의 세계를 탐험해볼까요?</p>' +
+        '</div>' +
+      '</section>';
 
     if (dreams.length === 0) {
       c.innerHTML =
-        '<div class="dash-hero view-enter">' +
-          '<div class="eyebrow">' + fmtDate(todayIso) + '</div>' +
-          '<h1>' + hello + '보관소</h1>' +
-          '<p class="dash-sub">아직 비어 있는 당신의 무의식 보관소입니다.</p>' +
-        '</div>' +
-        '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.empty('archive') + '</div>' +
+        '<div class="dream-dashboard">' + hero +
+        '<button class="dd-record-cta view-enter" data-go="/new">' +
+          '<span class="dd-cta-icon">' + global.Icons.ui('pen', { size: 19 }) + '</span>' +
+          '<span class="dd-cta-copy"><b>오늘은 어떤 꿈을 꾸셨나요?</b><small>잊기 전에 오늘의 꿈을 기록해보세요</small></span>' +
+          '<span class="dd-cta-arrow">' + global.Icons.ui('arrow', { size: 20 }) + '</span>' +
+        '</button>' +
+        '<div class="dd-empty card view-enter"><div class="empty-art">' + global.Icons.scene('archive') + '</div>' +
           '<h3>첫 번째 꿈을 기록해보세요</h3>' +
           '<p>꿈을 기록하면 그 속의 장소·인물·상황이 자동으로 도감에 수집됩니다.<br>' +
           '둘러보고 싶다면 예시 데이터를 불러와 모든 기능을 확인할 수 있습니다.</p>' +
           '<div class="empty-actions">' +
             '<button class="btn primary" data-go="/new">＋ 첫 꿈 기록하기</button>' +
             '<button class="btn ghost" id="sampleBtnDash">예시 데이터로 둘러보기</button>' +
-          '</div></div>';
+          '</div></div></div>';
       var sb = document.getElementById('sampleBtnDash');
       if (sb) sb.onclick = function () {
         var n = loadSampleData();
@@ -173,68 +234,83 @@
     var sorted = dreams.slice().sort(byNewest);
     var feat = sorted[0];
     var rest = sorted.slice(1, 5);
-
-    // 피처드(가장 최근) 꿈
     var featExcerpt = (feat.content || '').slice(0, 200);
+    var featEmo = Store.emotionById(feat.emotion) || {};
     var featHtml =
-      '<article class="card feature-card" data-dream-id="' + feat.id + '">' +
-        '<div class="feature-top"><span class="eyebrow">' + fmtDate(feat.date) + ' · 가장 최근의 꿈</span>' +
-        emotionBadge(feat.emotion) + '</div>' +
-        '<h2 class="feature-title">' + esc(feat.title) + '</h2>' +
-        '<p class="feature-excerpt">' + esc(featExcerpt) + (feat.content.length > 200 ? '…' : '') + '</p>' +
-        (kwChipsHtml(feat.keywords, dex.unlock, false) || '') +
+      '<article class="dd-panel dd-feature" data-dream-id="' + feat.id + '">' +
+        '<div class="dd-feature-copy">' +
+          '<div class="dd-panel-title">' + global.Icons.ui('spark', { size: 15 }) + '<span>가장 최근의 꿈</span></div>' +
+          '<h2>' + esc(feat.title) + '</h2>' +
+          '<p>' + esc(featExcerpt) + (feat.content.length > 200 ? '…' : '') + '</p>' +
+          (kwChipsHtml(feat.keywords, dex.unlock, false) || '') +
+          '<div class="dd-feature-meta">' + fmtDate(feat.date) + ' · ' + esc(featEmo.label || '') + '</div>' +
+        '</div>' +
+        '<div class="dd-feature-art" aria-hidden="true">' + global.Icons.dreamScene() + '</div>' +
       '</article>';
 
-    // 압축 최근 목록
     var restHtml = rest.length
-      ? '<div class="recent-list">' + rest.map(compactRow).join('') + '</div>'
-      : '';
+      ? '<div class="dd-recent-list">' + rest.map(compactRow).join('') + '</div>'
+      : '<div class="dd-panel-empty">최근 기록이 없습니다.</div>';
 
-    // 수집 진행 레일 카드
     var catRows = DICT.categories.map(function (cat) {
       var info = dex[cat];
-      return '<div class="rail-cat">' +
-        '<div class="rail-cat-top"><span>' + info.label + '</span>' +
-        '<span class="rail-frac">' + info.discovered + '<i>/' + info.total + '</i></span></div>' +
-        '<div class="progress"><span style="width:' + info.percent + '%"></span></div></div>';
+      return '<div class="dd-analysis-row">' +
+        '<div class="dd-analysis-label"><span>' + info.label + '</span><b>' + info.discovered + ' / ' + info.total + '</b></div>' +
+        '<div class="dd-analysis-track"><span class="cat-' + cat + '" style="width:' + info.percent + '%"></span></div>' +
+      '</div>';
     }).join('');
     var nextLine = next
       ? '<span class="rail-next-n">' + next.remaining + '개</span> 더 기록하면 · ' + esc(next.milestone.title)
       : '모든 마일스톤을 해금했습니다';
     var collectionCard =
-      '<div class="card rail-card">' +
-        '<div class="rail-head"><span class="eyebrow">수집 진행</span>' +
-        '<b>' + dex.overall.percent + '%</b></div>' +
-        catRows +
-        '<div class="rail-next">' + nextLine + '</div>' +
-      '</div>';
+      '<section class="dd-panel dd-analysis">' +
+        '<div class="dd-panel-head"><div class="dd-panel-title">' + global.Icons.ui('stats', { size: 16 }) + '<span>수집 현황</span></div>' +
+        '<span class="dd-period">전체 기간</span></div>' +
+        '<div class="dd-analysis-body">' +
+          '<div class="dd-donut" style="--pct:' + dex.overall.percent + '"><div><b>' + dex.overall.percent + '%</b><span>수집률</span></div></div>' +
+          '<div class="dd-analysis-rows">' + catRows + '</div>' +
+        '</div>' +
+        '<div class="dd-analysis-next">' + nextLine + '</div>' +
+      '</section>';
 
-    // 감정 흐름 카드
     var trendCard =
-      '<div class="card rail-card">' +
-        '<div class="rail-head"><span class="eyebrow">감정 흐름</span>' +
-        '<span class="rail-sub">최근 ' + Math.min(dreams.length, 18) + '개</span></div>' +
-        emotionTrendHtml(dreams) +
-        '<div class="trend-cap">위로 갈수록 밝은 감정</div>' +
-      '</div>';
+      '<section class="dd-panel dd-emotion">' +
+        '<div class="dd-panel-head"><div class="dd-panel-title">' + global.Icons.ui('moon', { size: 16 }) + '<span>감정 흐름</span></div>' +
+        '<span class="dd-period">최근 ' + Math.min(dreams.length, 18) + '개</span></div>' +
+        dashboardEmotionBars(stats) +
+      '</section>';
+
+    var wroteToday = dreams.some(function (d) { return d.date === todayIso; });
+    var todayCta =
+      '<button class="dd-record-cta view-enter' + (wroteToday ? ' done' : '') + '" data-go="/new">' +
+        '<span class="dd-cta-icon">' + global.Icons.ui(wroteToday ? 'check' : 'pen', { size: 19 }) + '</span>' +
+        '<span class="dd-cta-copy">' +
+          '<b>' + (wroteToday ? '오늘의 꿈을 기록했어요' : '오늘은 어떤 꿈을 꾸셨나요?') + '</b>' +
+          '<small>' + (wroteToday ? '기억나는 꿈이 더 있다면 마저 남겨보세요' : '잊기 전에 오늘의 꿈을 기록해보세요') + '</small>' +
+        '</span>' +
+        '<span class="dd-cta-arrow">' + global.Icons.ui('arrow', { size: 20 }) + '</span>' +
+      '</button>';
 
     c.innerHTML =
-      '<div class="dash-hero view-enter">' +
-        '<div class="eyebrow">' + fmtDate(todayIso) + '</div>' +
-        '<h1>' + hello + '보관소</h1>' +
-        '<p class="dash-stats">' +
-          '<b>' + dreams.length + '</b> 개의 꿈 <span class="sep">·</span> ' +
-          '도감 <b>' + dex.overall.percent + '%</b> <span class="sep">·</span> ' +
-          '최근 30일 <b>' + stats.recent30 + '</b>개' +
-        '</p>' +
+      '<div class="dream-dashboard">' +
+      hero +
+      todayCta +
+      '<div class="dd-grid view-enter">' +
+        featHtml +
+        collectionCard +
+        '<section class="dd-panel dd-recent">' +
+          '<div class="dd-panel-head"><div class="dd-panel-title"><span>최근 기록</span></div>' +
+          '<button class="dd-text-btn" id="moreBtn">전체 보기 ' + global.Icons.ui('arrow', { size: 14 }) + '</button></div>' +
+          restHtml +
+        '</section>' +
+        trendCard +
       '</div>' +
-      '<div class="dash-grid view-enter">' +
-        '<div class="dash-main">' +
-          featHtml +
-          (restHtml ? '<div class="recent-head"><span class="eyebrow">최근 기록</span>' +
-            '<button class="btn sm ghost" id="moreBtn">전체 보기 →</button></div>' + restHtml : '') +
-        '</div>' +
-        '<aside class="dash-rail">' + collectionCard + trendCard + '</aside>' +
+      '<section class="dd-message view-enter">' +
+        '<div class="dd-message-art" aria-hidden="true">' + global.Icons.dreamScene() + '</div>' +
+        '<span class="dd-message-icon">' + global.Icons.ui('spark', { size: 17 }) + '</span>' +
+        '<span><b>꿈은 사라지는 기록이 아니라, 수집 가능한 데이터입니다.</b>' +
+        '<small>당신의 무의식을 기록하면 나만의 도감으로 채워집니다.</small></span>' +
+      '</section>' +
       '</div>';
 
     var mb = document.getElementById('moreBtn');
@@ -245,10 +321,25 @@
   function compactRow(d) {
     var e = Store.emotionById(d.emotion) || {};
     return '<button class="recent-row" data-dream-id="' + d.id + '">' +
-      '<span class="rr-emo" style="color:' + (e.color || 'var(--accent)') + '">' + global.Icons.emotion(d.emotion, 15) + '</span>' +
-      '<span class="rr-title">' + esc(d.title) + '</span>' +
+      '<span class="rr-thumb" style="--thumb-color:' + (e.color || '#9180e8') + '"></span>' +
+      '<span class="rr-main"><span class="rr-title">' + esc(d.title) + '</span>' +
+      '<span class="rr-emotion" style="color:' + (e.color || '#9180e8') + '">' + esc(e.label || '') + '</span></span>' +
       '<span class="rr-date">' + fmtShort(d.date) + '</span>' +
+      '<span class="rr-arrow">' + global.Icons.ui('arrow', { size: 14 }) + '</span>' +
       '</button>';
+  }
+
+  function dashboardEmotionBars(stats) {
+    var max = 1;
+    Store.EMOTIONS.forEach(function (e) {
+      max = Math.max(max, stats.emotionCount[e.id] || 0);
+    });
+    return '<div class="dd-bars">' + Store.EMOTIONS.map(function (e) {
+      var value = stats.emotionCount[e.id] || 0;
+      var height = Math.max(14, Math.round((value / max) * 100));
+      return '<div class="dd-bar-item"><div class="dd-bar-track"><span style="height:' + height +
+        '%;background:' + e.color + '"></span></div><b>' + esc(e.label) + '</b><small>' + value + '</small></div>';
+    }).join('') + '</div>';
   }
 
   // 감정 흐름 미니차트 (감정 밝기(valence)를 높이로 인코딩)
@@ -260,7 +351,7 @@
       var v = EMO_VALENCE[d.emotion] != null ? EMO_VALENCE[d.emotion] : 0.5;
       var h = Math.round(v * 66 + 34);
       return '<span class="trend-bar" title="' + esc(fmtShort(d.date)) + ' · ' + esc(e.label || '') +
-        '" style="height:' + h + '%;background:' + (e.color || 'var(--accent)') + '"></span>';
+        '" style="height:' + h + '%;--bar:' + (e.color || 'var(--accent)') + '"></span>';
     }).join('');
     return '<div class="trend-bars">' + bars + '</div>';
   }
@@ -288,37 +379,82 @@
         '<div class="field"><label>감정 <span style="color:var(--text-faint)">(하나 선택)</span></label>' +
           '<div class="emotion-row" id="emoRow">' + chips + '</div></div>' +
         '<div class="field"><label for="f-content">꿈 내용</label>' +
-          '<textarea id="f-content" class="textarea" placeholder="꿈에서 본 장소, 만난 사람, 일어난 일을 자유롭게 적어보세요. 자세할수록 더 많은 키워드가 수집됩니다.">' + esc(d.content) + '</textarea>' +
-          '<div style="font-size:.78rem;color:var(--text-faint);margin-top:8px;display:flex;align-items:center;gap:6px">' + global.Icons.ui('spark', { size: 13 }) + '<span>저장하면 내용 속 장소·인물·상황이 자동으로 도감에 등록됩니다.</span></div></div>' +
+          '<textarea id="f-content" class="textarea" maxlength="4000" placeholder="꿈에서 본 장소, 만난 사람, 일어난 일을 자유롭게 적어보세요. 자세할수록 더 많은 키워드가 수집됩니다.">' + esc(d.content) + '</textarea>' +
+          '<div class="form-hint">' + global.Icons.ui('spark', { size: 13 }) + '<span>저장하면 내용 속 장소·인물·상황이 자동으로 도감에 등록됩니다.</span>' +
+          '<span class="char-count" id="charCount">0자</span></div></div>' +
         '<div style="display:flex;gap:10px;margin-top:8px">' +
-          '<button type="submit" class="btn primary">' + (editing ? '수정 저장' : '기록하고 수집하기') + '</button>' +
+          '<button type="submit" class="btn primary" id="submitBtn">' + (editing ? '수정 저장' : '기록하고 수집하기') + '</button>' +
           '<button type="button" class="btn ghost" id="cancelBtn">취소</button>' +
         '</div>' +
       '</form></div>';
 
     var selectedEmo = d.emotion || '';
     var emoRow = document.getElementById('emoRow');
-    emoRow.addEventListener('click', function (e) {
-      var btn = e.target.closest('.emotion-chip');
-      if (!btn) return;
+    var titleEl = document.getElementById('f-title');
+    var contentEl = document.getElementById('f-content');
+    var dateEl = document.getElementById('f-date');
+    var submitBtn = document.getElementById('submitBtn');
+    var charCount = document.getElementById('charCount');
+    var formEl = document.getElementById('dreamForm');
+
+    // 글자 수 + 제출 가능 여부 갱신
+    function refresh() {
+      var n = contentEl.value.length;
+      charCount.textContent = n.toLocaleString() + '자';
+      charCount.classList.toggle('warn', n > 3600);
+      submitBtn.disabled = !(contentEl.value.trim() && selectedEmo);
+    }
+    contentEl.addEventListener('input', refresh);
+
+    function selectEmo(btn) {
       selectedEmo = btn.getAttribute('data-emo');
       emoRow.querySelectorAll('.emotion-chip').forEach(function (b) {
         var on = b === btn;
         b.classList.toggle('selected', on);
-        var col = Store.emotionById(b.getAttribute('data-emo')).color;
-        b.style.color = on ? col : '';
+        b.style.color = on ? Store.emotionById(b.getAttribute('data-emo')).color : '';
       });
+      refresh();
+    }
+    emoRow.addEventListener('click', function (e) {
+      var btn = e.target.closest('.emotion-chip');
+      if (btn) selectEmo(btn);
+    });
+    // 감정 칩 좌우 방향키 이동 + 선택
+    emoRow.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      var chips = Array.prototype.slice.call(emoRow.querySelectorAll('.emotion-chip'));
+      var cur = chips.indexOf(document.activeElement);
+      if (cur === -1) cur = chips.findIndex(function (b) { return b.classList.contains('selected'); });
+      var next = (cur + (e.key === 'ArrowRight' ? 1 : -1) + chips.length) % chips.length;
+      e.preventDefault();
+      chips[next].focus();
+      selectEmo(chips[next]);
     });
 
+    // 작성 중 이탈 경고 — 초기 스냅샷과 비교
+    var snap = JSON.stringify({ t: d.title, c: d.content, dt: d.date, e: d.emotion });
+    function isDirty() {
+      return JSON.stringify({ t: titleEl.value, c: contentEl.value, dt: dateEl.value, e: selectedEmo }) !== snap;
+    }
     document.getElementById('cancelBtn').onclick = function () {
-      go(editing ? '/dreams/' + editing.id : '/');
+      var dest = editing ? '/dreams/' + editing.id : '/';
+      if (!isDirty()) { go(dest); return; }
+      confirmModal({ title: '작성을 그만둘까요?', message: '작성 중인 내용은 저장되지 않고 사라집니다.', confirm: '나가기', danger: true })
+        .then(function (ok) { if (ok) go(dest); });
     };
 
-    document.getElementById('dreamForm').addEventListener('submit', function (e) {
+    // Ctrl/⌘+Enter 저장
+    formEl.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); formEl.requestSubmit(); }
+    });
+
+    refresh();
+
+    formEl.addEventListener('submit', function (e) {
       e.preventDefault();
-      var title = document.getElementById('f-title').value.trim();
-      var content = document.getElementById('f-content').value.trim();
-      var date = document.getElementById('f-date').value || today;
+      var title = titleEl.value.trim();
+      var content = contentEl.value.trim();
+      var date = dateEl.value || today;
       if (!content) { toast(tmsg('warn', '꿈 내용을 입력해주세요.')); return; }
       if (!selectedEmo) { toast(tmsg('warn', '감정을 하나 선택해주세요.')); return; }
 
@@ -357,10 +493,24 @@
   }
 
   /* ============================ 목록 ============================ */
-  var listState = { q: '', emotion: 'all', fav: false };
+  var LIST_PAGE = 15;
+  var listState = { q: '', emotion: 'all', fav: false, day: null, month: null, calMonth: null, shown: LIST_PAGE };
+  var _calOutside = null; // 달력 팝업 바깥클릭 닫기 핸들러(중복 방지용)
+
+  function monthLabel(iso) {
+    var p = (iso || '').split('-');
+    return p.length >= 2 ? Number(p[0]) + '년 ' + Number(p[1]) + '월' : (iso || '');
+  }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
   function list(c) {
     var unlock = Classify.unlockState(Store.getDreams().length);
+    listState.shown = LIST_PAGE; // 아카이브를 다시 열면 처음부터
+    listState.day = null;        // 날짜 선택 해제
+    listState.month = null;      // 월 선택 해제
+    // 달력 시작 월 = 가장 최근 꿈의 월 (없으면 이번 달)
+    var latestDream = Store.getDreams().slice().sort(byNewest)[0];
+    listState.calMonth = latestDream ? (latestDream.date || '').slice(0, 7) : new Date().toISOString().slice(0, 7);
 
     var emoFilters = '<button class="fchip' + (listState.emotion === 'all' ? ' active' : '') +
       '" data-emo="all">전체</button>' +
@@ -373,9 +523,17 @@
       '<div class="toolbar">' +
         '<div class="search"><span class="ic">' + global.Icons.ui('search', { size: 16 }) + '</span>' +
         '<input id="searchInput" class="input" placeholder="제목·내용 검색" value="' + esc(listState.q) + '"></div>' +
-        '<button class="fchip' + (listState.fav ? ' active' : '') + '" id="favFilter">★ 즐겨찾기</button>' +
+        '<div class="tool-actions">' +
+          '<div class="cal-toggle-wrap">' +
+            '<button class="fchip cal-toggle" id="calToggle" aria-label="날짜로 보기">' +
+              global.Icons.ui('calendar', { size: 16 }) + '</button>' +
+            '<div class="cal cal-pop" id="calBox" hidden></div>' +
+          '</div>' +
+          '<button class="fchip' + (listState.fav ? ' active' : '') + '" id="favFilter" aria-label="즐겨찾기만 보기" title="즐겨찾기">' +
+            global.Icons.ui('star', { size: 16 }) + '</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="filter-chips" id="emoFilters" style="margin-bottom:20px">' + emoFilters + '</div>' +
+      '<div class="filter-chips" id="emoFilters" style="margin-bottom:12px">' + emoFilters + '</div>' +
       '<div id="listResult"></div>';
 
     function renderResult() {
@@ -384,27 +542,136 @@
       var filtered = dreams.filter(function (d) {
         if (listState.fav && !d.favorite) return false;
         if (listState.emotion !== 'all' && d.emotion !== listState.emotion) return false;
+        if (listState.day && d.date !== listState.day) return false;
+        if (listState.month && (d.date || '').slice(0, 7) !== listState.month) return false;
         if (q && (d.title + ' ' + d.content).toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
       var host = document.getElementById('listResult');
       if (!dreams.length) {
         host.innerHTML = emptyCard('archive', '아직 기록한 꿈이 없습니다', '첫 꿈을 기록하면 이곳에 카드로 쌓입니다.', '＋ 꿈 기록하기', '/new');
-      } else if (!filtered.length) {
-        host.innerHTML = emptyCard('search', '검색 결과가 없습니다', '다른 검색어나 필터를 시도해보세요.');
-      } else {
-        host.innerHTML = '<div class="dream-grid view-enter">' +
-          filtered.map(function (d) { return dreamCard(d, unlock); }).join('') + '</div>';
+        return;
       }
+      if (!filtered.length) {
+        host.innerHTML = emptyCard('search', '검색 결과가 없습니다', '다른 검색어나 필터를 시도해보세요.');
+        return;
+      }
+      // 점진 로드: 앞에서 shown개만
+      var visible = filtered.slice(0, listState.shown);
+      // 월(YYYY-MM)별 그룹 — 최신순이라 등장 순서대로 그룹 배열 구성
+      var groups = [], gmap = {};
+      visible.forEach(function (d) {
+        var key = (d.date || '').slice(0, 7);
+        if (!gmap[key]) { gmap[key] = { label: monthLabel(d.date), items: [] }; groups.push(gmap[key]); }
+        gmap[key].items.push(d);
+      });
+      var html = groups.map(function (g) {
+        return '<div class="month-head"><span class="mh-label">' + esc(g.label) + '</span>' +
+          '<span class="mh-count">' + g.items.length + '</span></div>' +
+          '<div class="dream-grid">' + g.items.map(function (d) { return dreamCard(d, unlock); }).join('') + '</div>';
+      }).join('');
+      var remaining = filtered.length - visible.length;
+      if (remaining > 0) {
+        html += '<div class="load-more-wrap"><button class="btn ghost" id="loadMoreBtn">더 보기 ' +
+          '<span class="lm-n">' + remaining + '개</span></button></div>';
+      }
+      host.innerHTML = html;
+      var lm = document.getElementById('loadMoreBtn');
+      if (lm) lm.onclick = function () { listState.shown += LIST_PAGE; renderResult(); };
     }
     // 위임 바인딩은 한 번만 (host 엘리먼트는 재사용, innerHTML 만 교체됨)
     bindDreamCards(document.getElementById('listResult'));
 
     var si = document.getElementById('searchInput');
-    si.addEventListener('input', function () { listState.q = si.value; renderResult(); });
+    si.addEventListener('input', function () { listState.q = si.value; listState.shown = LIST_PAGE; renderResult(); });
+    function shiftCalMonth(dir) {
+      var y = +listState.calMonth.slice(0, 4), mo = +listState.calMonth.slice(5, 7);
+      mo += (dir === 'next' ? 1 : -1);
+      if (mo < 1) { mo = 12; y--; } else if (mo > 12) { mo = 1; y++; }
+      listState.calMonth = y + '-' + pad2(mo);
+    }
+    function renderCalendar() {
+      var box = document.getElementById('calBox'); if (!box) return;
+      var ym = listState.calMonth, year = +ym.slice(0, 4), mon = +ym.slice(5, 7);
+      var startDow = new Date(year, mon - 1, 1).getDay();
+      var dim = new Date(year, mon, 0).getDate();
+      var counts = {};
+      Store.getDreams().forEach(function (d) { if ((d.date || '').slice(0, 7) === ym) counts[d.date] = (counts[d.date] || 0) + 1; });
+      var todayIso = new Date().toISOString().slice(0, 10);
+      var WD = ['일', '월', '화', '수', '목', '금', '토'];
+      var hdr = '<div class="cal-head">' +
+        '<button class="cal-nav" data-cal-nav="prev" aria-label="이전 달">‹</button>' +
+        '<button class="cal-title' + (listState.month === ym ? ' selected' : '') + '" data-cal-month ' +
+          'title="이 달 전체 보기">' + esc(monthLabel(ym)) + '</button>' +
+        '<button class="cal-nav" data-cal-nav="next" aria-label="다음 달">›</button>' +
+        ((listState.day || listState.month) ? '<button class="cal-reset" data-cal-reset>전체 보기</button>' : '') +
+        '</div>';
+      var wd = '<div class="cal-grid cal-wd">' + WD.map(function (w) { return '<span class="cal-wcell">' + w + '</span>'; }).join('') + '</div>';
+      var cells = '';
+      for (var i = 0; i < startDow; i++) cells += '<span class="cal-cell blank"></span>';
+      for (var dd = 1; dd <= dim; dd++) {
+        var iso = ym + '-' + pad2(dd);
+        var cls = 'cal-cell' + (counts[iso] ? ' has' : ' none') +
+          (listState.day === iso ? ' selected' : '') + (iso === todayIso ? ' today' : '');
+        if (counts[iso]) cells += '<button class="' + cls + '" data-day="' + iso + '">' + dd + '<i class="cal-dot"></i></button>';
+        else cells += '<span class="' + cls + '">' + dd + '</span>';
+      }
+      // 항상 6줄(42칸)로 채워 달마다 높이가 변하지 않게
+      for (var t = startDow + dim; t < 42; t++) cells += '<span class="cal-cell blank"></span>';
+      box.innerHTML = hdr + wd + '<div class="cal-grid cal-days">' + cells + '</div>';
+    }
+    function updateCalToggle() {
+      var t = document.getElementById('calToggle');
+      if (t) t.classList.toggle('active', !!(listState.day || listState.month));
+    }
+    function openCal(open) {
+      var box = document.getElementById('calBox'), t = document.getElementById('calToggle');
+      box.hidden = !open;
+      if (t) t.classList.toggle('open', open);
+      if (open) renderCalendar();
+    }
+    document.getElementById('calToggle').addEventListener('click', function (e) {
+      e.stopPropagation();
+      openCal(document.getElementById('calBox').hidden);
+    });
+    if (_calOutside) document.removeEventListener('click', _calOutside);
+    _calOutside = function (e) {
+      var box = document.getElementById('calBox');
+      if (box && !box.hidden && !e.target.closest('.cal-toggle-wrap')) openCal(false);
+    };
+    document.addEventListener('click', _calOutside);
+
+    document.getElementById('calBox').addEventListener('click', function (e) {
+      e.stopPropagation(); // 달력 내부 클릭이 '바깥 클릭'으로 오인돼 닫히지 않도록
+      var nav = e.target.closest('[data-cal-nav]');
+      if (nav) { shiftCalMonth(nav.getAttribute('data-cal-nav')); renderCalendar(); return; }
+      if (e.target.closest('[data-cal-reset]')) {
+        listState.day = null; listState.month = null; listState.shown = LIST_PAGE;
+        renderCalendar(); renderResult(); updateCalToggle();
+        return;
+      }
+      if (e.target.closest('[data-cal-month]')) {
+        // 월 제목 클릭 → 그 달 전체 (다시 누르면 해제)
+        listState.month = (listState.month === listState.calMonth ? null : listState.calMonth);
+        listState.day = null; listState.shown = LIST_PAGE;
+        renderResult(); updateCalToggle();
+        openCal(false);
+        return;
+      }
+      var dayBtn = e.target.closest('[data-day]');
+      if (dayBtn) {
+        var iso = dayBtn.getAttribute('data-day');
+        listState.day = (listState.day === iso ? null : iso);
+        listState.month = null;
+        listState.shown = LIST_PAGE;
+        renderResult(); updateCalToggle();
+        openCal(false); // 날짜 고르면 팝업 닫기
+      }
+    });
     document.getElementById('favFilter').onclick = function () {
       listState.fav = !listState.fav;
       this.classList.toggle('active', listState.fav);
+      listState.shown = LIST_PAGE;
       renderResult();
     };
     document.getElementById('emoFilters').addEventListener('click', function (e) {
@@ -412,8 +679,11 @@
       listState.emotion = b.getAttribute('data-emo');
       this.querySelectorAll('.fchip').forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
+      listState.shown = LIST_PAGE;
       renderResult();
     });
+    renderCalendar();
+    updateCalToggle();
     renderResult();
   }
 
@@ -421,26 +691,81 @@
   function detail(c, params) {
     var d = Store.getDream(params.id);
     if (!d) { c.innerHTML = emptyCard('error', '꿈을 찾을 수 없습니다', '삭제되었거나 잘못된 주소입니다.', '아카이브로', '/dreams'); return; }
-    var unlock = Classify.unlockState(Store.getDreams().length);
+    var dreams = Store.getDreams();
+    var unlock = Classify.unlockState(dreams.length);
     var kw = kwChipsHtml(d.keywords, unlock, true);
+
+    // 읽기 메타 — 요일 · 글자수 · 기록 번호
+    var WD = ['일', '월', '화', '수', '목', '금', '토'];
+    var wd = WD[new Date(d.date + 'T00:00:00').getDay()];
+    var chars = (d.content || '').length;
+    var sortedNew = dreams.slice().sort(byNewest);
+    var idx = -1;
+    for (var si = 0; si < sortedNew.length; si++) { if (sortedNew[si].id === d.id) { idx = si; break; } }
+    var entryNo = idx >= 0 ? dreams.length - idx : dreams.length;
+    var newer = idx > 0 ? sortedNew[idx - 1] : null;                          // 더 최근
+    var older = (idx >= 0 && idx < sortedNew.length - 1) ? sortedNew[idx + 1] : null; // 더 예전
+
+    // 함께 떠오른 꿈 — 키워드를 공유하는 다른 기록 (공유 수 → 최신순)
+    // 꿈의 keywords는 {place:[id],person:[id],situation:[id]} 구조
+    function keyList(dream) {
+      var arr = [];
+      DICT.categories.forEach(function (cat) {
+        ((dream.keywords && dream.keywords[cat]) || []).forEach(function (id) { arr.push(cat + ':' + id); });
+      });
+      return arr;
+    }
+    var myKeys = keyList(d);
+    var related = dreams.filter(function (x) { return x.id !== d.id; }).map(function (x) {
+      var xk = keyList(x);
+      var shared = 0;
+      for (var j = 0; j < xk.length; j++) { if (myKeys.indexOf(xk[j]) !== -1) shared++; }
+      return { d: x, shared: shared };
+    }).filter(function (o) { return o.shared > 0; })
+      .sort(function (a, b) { return b.shared !== a.shared ? b.shared - a.shared : byNewest(a.d, b.d); })
+      .slice(0, 3).map(function (o) { return o.d; });
+
+    function pnCell(dream, dir, cls) {
+      if (!dream) return '<span class="pn pn-empty"></span>';
+      return '<button class="pn ' + cls + '" data-go="/dreams/' + dream.id + '">' +
+        '<span class="pn-dir">' + dir + '</span>' +
+        '<span class="pn-title">' + esc(dream.title) + '</span></button>';
+    }
 
     c.innerHTML =
       '<button class="btn sm ghost" id="backBtn" style="margin-bottom:18px">← 아카이브</button>' +
       '<div class="detail-head view-enter">' +
-        '<div><h1 style="margin:0 0 8px;font-size:1.6rem">' + esc(d.title) + '</h1>' +
+        '<div class="detail-main">' +
+          '<h1 class="detail-title">' + global.Icons.emotionSticker(d.emotion, 34) +
+            '<span>' + esc(d.title) + '</span></h1>' +
           '<div class="detail-meta">' + emotionBadge(d.emotion) +
-          '<span class="eyebrow">' + fmtDate(d.date) + '</span></div></div>' +
+            '<span class="eyebrow">' + fmtDate(d.date) + '</span></div>' +
+          '<div class="detail-submeta">기록 No.' + entryNo + ' · ' + wd + '요일 · ' + chars + '자</div>' +
+        '</div>' +
         '<div class="detail-actions">' +
           '<button class="fav-btn ' + (d.favorite ? 'on' : '') + '" id="favBtn" title="즐겨찾기" aria-label="즐겨찾기">' +
           (d.favorite ? '★' : '☆') + '</button>' +
+          '<button class="btn sm" id="shareBtn">내보내기</button>' +
           '<button class="btn sm" id="editBtn">수정</button>' +
           '<button class="btn sm danger" id="delBtn">삭제</button>' +
         '</div>' +
       '</div>' +
       '<div class="card detail-body view-enter">' + esc(d.content).replace(/\n/g, '<br>') + '</div>' +
-      (kw ? '<div class="section-label">이 꿈에서 수집한 흔적</div>' + kw : '');
+      '<div class="interp-card view-enter">' +
+        '<div class="interp-head">' + global.Icons.ui('insight', { size: 18 }) +
+          '<span>무의식이 비추는 것</span></div>' +
+        '<p class="interp-body">' + esc(global.Interpret.analyze(d)) + '</p>' +
+        '<p class="interp-warm">' + global.Icons.ui('moon', { size: 15 }) +
+          '<span>' + esc(global.Interpret.warmth(d)) + '</span></p>' +
+        '<div class="interp-note">수집된 상징을 바탕으로 한 해석이에요</div>' +
+      '</div>' +
+      (kw ? '<div class="section-label">이 꿈에서 수집한 흔적</div>' + kw : '') +
+      (related.length ? '<div class="section-label" style="margin-top:44px">함께 떠오른 꿈</div>' +
+        '<div class="dream-grid">' + related.map(function (x) { return dreamCard(x, unlock); }).join('') + '</div>' : '') +
+      ((newer || older) ? '<nav class="post-nav">' + pnCell(older, '← 이전 꿈', 'pn-prev') + pnCell(newer, '다음 꿈 →', 'pn-next') + '</nav>' : '');
 
     document.getElementById('backBtn').onclick = function () { go('/dreams'); };
+    document.getElementById('shareBtn').onclick = function () { openShareSheet(d); };
     document.getElementById('editBtn').onclick = function () { go('/edit/' + d.id); };
     document.getElementById('favBtn').onclick = function () {
       var nd = Store.toggleFavorite(d.id);
@@ -465,25 +790,16 @@
     var cat = (params && params.cat) || 'place';
     if (DICT.categories.indexOf(cat) === -1) cat = 'place';
 
-    var summary = DICT.categories.map(function (cc) {
-      var info = dx[cc];
-      return '<div class="card dex-cat-card">' +
-        '<div class="dc-top"><span class="dc-name">' + info.label + '</span>' +
-        '<span class="dc-frac">' + info.discovered + '<small> / ' + info.total + '</small></span></div>' +
-        '<div class="progress"><span style="width:' + info.percent + '%"></span></div></div>';
-    }).join('');
-
     var tabs = DICT.categories.map(function (cc) {
       return '<button class="fchip' + (cc === cat ? ' active' : '') + '" data-cat="' + cc + '">' +
-        DICT[cc].label + ' ' + dx[cc].discovered + '/' + dx[cc].total + '</button>';
+        DICT[cc].label + ' <i>' + dx[cc].discovered + '/' + dx[cc].total + '</i></button>';
     }).join('');
 
     c.innerHTML = head('Dreamdex 도감', '꿈에서 발견한 흔적을 수집하는 무의식 도감입니다.') +
-      '<div class="dex-summary view-enter">' + summary + '</div>' +
-      '<div class="card" style="padding:14px 16px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">' +
-        '<span style="color:var(--text-dim);font-size:.9rem">전체 완성률</span>' +
-        '<div style="flex:1;min-width:160px"><div class="progress"><span style="width:' + dx.overall.percent + '%"></span></div></div>' +
-        '<b>' + dx.overall.percent + '% (' + dx.overall.discovered + '/' + dx.overall.total + ')</b>' +
+      '<div class="dex-header view-enter">' +
+        '<div class="dh-overall"><span class="dh-pct">' + dx.overall.percent + '%</span>' +
+          '<span class="dh-sub">' + dx.overall.discovered + ' / ' + dx.overall.total + ' 수집</span></div>' +
+        '<div class="progress dh-allbar"><span style="width:' + dx.overall.percent + '%"></span></div>' +
       '</div>' +
       '<div class="dex-tabs" id="dexTabs">' + tabs + '</div>' +
       '<div id="dexGrid"></div>';
@@ -494,7 +810,8 @@
         var tierTag = s.tier === 'rare' ? '<span class="tier-tag tier-rare">희귀</span>'
           : s.tier === 'hidden' ? '<span class="tier-tag tier-hidden">숨김</span>' : '';
         if (s.count > 0) {
-          return '<div class="dex-slot found" data-id="' + s.id + '">' + tierTag +
+          return '<div class="dex-slot found" data-id="' + s.id + '" style="--c:var(--node-' + cat + ')">' + tierTag +
+            '<span class="ds-icon">' + global.Icons.keyword(cat, s.id, 28) + '</span>' +
             '<div class="ds-name">' + esc(s.name) + '</div>' +
             '<div class="ds-count">' + s.count + '회 발견</div></div>';
         }
@@ -571,13 +888,21 @@
       return;
     }
 
+    // '가장 많은 감정' 값 — 다른 카드처럼 큰 텍스트(감정 이름, 감정색)로 통일
+    var topEmo = st.topEmotion ? Store.emotionById(st.topEmotion) : null;
+    var topEmoVal = topEmo ? '<span style="color:' + topEmo.color + '">' + esc(topEmo.label) + '</span>' : '-';
+
     c.innerHTML = head('통계', '당신의 무의식이 그리는 패턴을 들여다보세요.') +
-      '<div class="grid cols-4 view-enter" style="margin-bottom:18px">' +
-        metric('총 꿈 개수', st.total + '<small> 개</small>') +
-        metric('최근 30일 기록', st.recent30 + '<small> 개</small>') +
-        '<div class="metric card"><div class="label">가장 많은 감정</div>' +
-          '<div style="margin-top:8px">' + (st.topEmotion ? emotionBadge(st.topEmotion) : '-') + '</div></div>' +
-        metric('가장 많은 장소', st.topPlaceName ? esc(st.topPlaceName) : '-') +
+      '<div class="stat-strip view-enter">' +
+        ssItem(global.Icons.ui('moon', { size: 18 }), 'var(--accent)', '총 꿈 개수',
+          st.total + '<small>개</small>', 'var(--accent)') +
+        ssItem(global.Icons.ui('calendar', { size: 18 }), 'var(--accent-2)', '최근 30일',
+          st.recent30 + '<small>개</small>', '') +
+        ssItem(topEmo ? global.Icons.emotion(st.topEmotion, 18) : global.Icons.ui('info', { size: 18 }),
+          topEmo ? topEmo.color : 'var(--text-dim)', '가장 많은 감정',
+          topEmo ? esc(topEmo.label) : '-', topEmo ? topEmo.color : '') +
+        ssItem(global.Icons.ui('pin', { size: 18 }), 'var(--cat-place)', '가장 많은 장소',
+          st.topPlaceName ? esc(st.topPlaceName) : '-', st.topPlaceName ? 'var(--cat-place)' : '') +
       '</div>' +
       '<div class="stats-grid view-enter">' +
         '<div class="card chart-wrap">' +
@@ -608,7 +933,7 @@
       return;
     }
 
-    var graph = Classify.buildGraph(dreams, 26);
+    var graph = Classify.buildGraph(dreams, 20);
     if (!graph.nodes.length) {
       c.innerHTML = head('꿈 지도', '꿈 속 요소들의 연결을 탐험합니다.') +
         emptyCard('map', '아직 그릴 연결이 없습니다', '키워드가 등장하는 꿈을 더 기록해보세요.');
@@ -648,10 +973,56 @@
         '<span class="theme-desc">' + esc(t.desc) + '</span></button>';
     }).join('');
 
+    // 패턴 미니 미리보기 (var(--text-faint) 기반 — 현재 테마 색에 맞춰 보임)
+    function patPrevStyle(id) {
+      var ink = 'var(--text-faint)';
+      switch (id) {
+        case 'dots':       return 'background-image:radial-gradient(' + ink + ' 1.1px,transparent 1.3px);background-size:9px 9px';
+        case 'grid':       return 'background-image:linear-gradient(' + ink + ' 1px,transparent 1px),linear-gradient(90deg,' + ink + ' 1px,transparent 1px);background-size:9px 9px;opacity:.7';
+        case 'diagonal':   return 'background-image:repeating-linear-gradient(45deg,' + ink + ' 0 1px,transparent 1px 7px);opacity:.7';
+        case 'crosshatch': return 'background-image:repeating-linear-gradient(45deg,' + ink + ' 0 1px,transparent 1px 8px),repeating-linear-gradient(-45deg,' + ink + ' 0 1px,transparent 1px 8px);opacity:.6';
+        case 'waves':      return 'background-image:radial-gradient(circle at 50% 100%,transparent 56%,' + ink + ' 60%,transparent 66%);background-size:16px 8px;opacity:.8';
+        default:           return '';
+      }
+    }
+    var patCards = Store.PATTERNS.map(function (p) {
+      var on = s.pattern === p.id;
+      return '<button type="button" class="theme-card' + (on ? ' active' : '') + '" data-pattern-id="' + p.id + '">' +
+        '<span class="pat-prev" style="' + patPrevStyle(p.id) + '"></span>' +
+        '<span class="theme-name">' + esc(p.label) + '</span>' +
+        '<span class="theme-desc">' + esc(p.desc) + '</span></button>';
+    }).join('');
+
+    // 배경 효과 미니 미리보기 (정지 이미지로 분위기만 — 실제는 움직임)
+    function fxPrevStyle(id) {
+      var a = 'var(--accent-2)';
+      switch (id) {
+        case 'stars':    return 'background-image:radial-gradient(' + a + ' 1.2px,transparent 1.5px);background-size:11px 11px;opacity:.85';
+        case 'shooting': return 'background-image:radial-gradient(circle at 76% 72%,color-mix(in srgb,' + a + ' 85%,#fff) 0 1.6px,transparent 2.2px),linear-gradient(135deg,transparent 54%,' + a + ' 72%,transparent 77%);opacity:.85';
+        case 'aurora':   return 'background-image:linear-gradient(to bottom,color-mix(in srgb,var(--cat-place) 80%,transparent),transparent 80%),linear-gradient(to bottom,color-mix(in srgb,var(--cat-situation) 80%,transparent),transparent 80%);background-size:42% 100%,40% 100%;background-position:16% 0,74% 0;background-repeat:no-repeat;filter:blur(2px)';
+        case 'petals':   return 'background-image:radial-gradient(circle at 30% 34%,#ffc6d4 0 3px,transparent 4px),radial-gradient(circle at 64% 58%,#ffd7c0 0 2.6px,transparent 3.6px),radial-gradient(circle at 46% 80%,#f7d3ea 0 2.6px,transparent 3.6px);opacity:.95';
+        case 'bubbles':  return 'background-image:radial-gradient(circle at 32% 60%,transparent 2.5px,color-mix(in srgb,var(--accent-2) 45%,transparent) 3px,transparent 4px),radial-gradient(circle at 62% 42%,transparent 3.5px,color-mix(in srgb,var(--accent-2) 45%,transparent) 4px,transparent 5px);opacity:.9';
+        default:         return '';
+      }
+    }
+    var fxCards = Store.effectsFor(s.theme).map(function (f) {
+      var on = s.effect === f.id;
+      return '<button type="button" class="theme-card' + (on ? ' active' : '') + '" data-effect-id="' + f.id + '">' +
+        '<span class="pat-prev" style="' + fxPrevStyle(f.id) + '"></span>' +
+        '<span class="theme-name">' + esc(f.label) + '</span>' +
+        '<span class="theme-desc">' + esc(f.desc) + '</span></button>';
+    }).join('');
+
     c.innerHTML = head('설정', '보관소를 관리합니다.') +
       '<div class="card view-enter" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
         '<div class="eyebrow" style="margin-bottom:14px">테마</div>' +
         '<div class="theme-grid" id="themeGrid">' + themeCards + '</div>' +
+        '<div style="border-top:1px solid var(--border);margin:20px 0 16px"></div>' +
+        '<div class="eyebrow" style="margin-bottom:14px">배경 패턴</div>' +
+        '<div class="theme-grid" id="patternGrid">' + patCards + '</div>' +
+        '<div style="border-top:1px solid var(--border);margin:20px 0 16px"></div>' +
+        '<div class="eyebrow" style="margin-bottom:14px">배경 효과</div>' +
+        '<div class="theme-grid" id="effectGrid">' + fxCards + '</div>' +
         '<div style="border-top:1px solid var(--border);margin:20px 0 4px"></div>' +
         row('닉네임', '<input id="nickInput" class="input" style="max-width:220px" value="' + esc(s.nickname) + '" placeholder="닉네임">') +
       '</div>' +
@@ -663,7 +1034,7 @@
       '</div>' +
       '<div class="card" style="padding:24px 26px;max-width:680px">' +
         '<div class="eyebrow" style="margin-bottom:8px;color:var(--danger)">위험 구역</div>' +
-        '<p style="color:var(--text-dim);font-size:.86rem;margin:0 0 16px">모든 꿈과 도감 기록이 영구히 삭제됩니다.</p>' +
+        '<p style="color:var(--text-dim);margin:0 0 16px">모든 꿈과 도감 기록이 영구히 삭제됩니다.</p>' +
         '<button class="btn sm danger" id="clearBtn">전체 초기화</button>' +
       '</div>';
 
@@ -672,6 +1043,26 @@
       var id = btn.getAttribute('data-theme-id');
       Store.saveSettings({ theme: id });
       global.applyTheme(id);
+      // 새 테마에 안 맞는 효과는 끄고(정합), 효과 피커를 새 목록으로 갱신
+      var cur = Store.getSettings().effect;
+      var compat = Store.effectsFor(id).some(function (f) { return f.id === cur; });
+      if (!compat) { Store.saveSettings({ effect: 'none' }); }
+      global.applyEffect(Store.getSettings().effect);
+      settings(c);
+    });
+    document.getElementById('patternGrid').addEventListener('click', function (e) {
+      var btn = e.target.closest('.theme-card'); if (!btn) return;
+      var id = btn.getAttribute('data-pattern-id');
+      Store.saveSettings({ pattern: id });
+      global.applyPattern(id);
+      this.querySelectorAll('.theme-card').forEach(function (x) { x.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+    document.getElementById('effectGrid').addEventListener('click', function (e) {
+      var btn = e.target.closest('.theme-card'); if (!btn) return;
+      var id = btn.getAttribute('data-effect-id');
+      Store.saveSettings({ effect: id });
+      global.applyEffect(id);
       this.querySelectorAll('.theme-card').forEach(function (x) { x.classList.remove('active'); });
       btn.classList.add('active');
     });
@@ -727,8 +1118,16 @@
   function head(title, sub) {
     return '<div class="page-head"><h1>' + esc(title) + '</h1><p>' + esc(sub) + '</p></div>';
   }
-  function metric(label, value) {
-    return '<div class="metric card"><div class="label">' + esc(label) + '</div><div class="value">' + value + '</div></div>';
+  function metric(label, value, cls) {
+    return '<div class="metric card' + (cls ? ' ' + cls : '') + '"><div class="label">' + esc(label) + '</div><div class="value">' + value + '</div></div>';
+  }
+  // 통계 지표 — 박스 없는 아이콘+숫자 스트립 항목
+  function ssItem(icon, iconColor, label, value, valueColor) {
+    return '<div class="ss-item">' +
+      '<span class="ss-ic" style="color:' + iconColor + '">' + icon + '</span>' +
+      '<div class="ss-label">' + esc(label) + '</div>' +
+      '<div class="ss-value"' + (valueColor ? ' style="color:' + valueColor + '"' : '') + '>' + value + '</div>' +
+      '</div>';
   }
   function row(label, control) {
     return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;gap:14px">' +
@@ -736,7 +1135,7 @@
   }
   function emptyCard(illustKey, title, desc, btnLabel, btnPath) {
     var btn = btnLabel ? '<div style="margin-top:18px"><button class="btn primary" data-go="' + btnPath + '">' + esc(btnLabel) + '</button></div>' : '';
-    var el = '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.empty(illustKey) + '</div>' +
+    var el = '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.scene(illustKey) + '</div>' +
       '<h3>' + esc(title) + '</h3>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + btn + '</div>';
     return el;
   }
@@ -760,7 +1159,7 @@
     return '<div class="card dream-card" data-id="' + d.id + '">' +
       '<div class="dc-head"><div><div class="dc-title">' + esc(d.title) + '</div>' +
       '<div class="dc-date">' + fmtDate(d.date) + '</div></div>' +
-      emotionBadge(d.emotion) + '</div>' +
+      global.Icons.emotionSticker(d.emotion, 30) + '</div>' +
       '<div class="dc-excerpt">' + esc(excerpt) + (d.content.length > 120 ? '…' : '') + '</div>' +
       '<div class="dc-foot">' + (kwChipsHtml(d.keywords, unlock, false) || '<span></span>') +
       '<button class="fav-btn ' + (d.favorite ? 'on' : '') + '" data-fav="' + d.id + '" aria-label="즐겨찾기">' +

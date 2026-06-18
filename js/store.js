@@ -59,9 +59,16 @@
   }
 
   /* ------------------------------ 설정 ------------------------------- */
-  var VALID_THEMES = ['observatory', 'manuscript', 'specimen'];
+  var VALID_THEMES = ['mongsil', 'observatory', 'manuscript', 'specimen', 'amethyst', 'dawn', 'abyss',
+                      'mist', 'lilac', 'mint'];
+  var VALID_PATTERNS = ['none', 'dots', 'grid', 'diagonal', 'crosshatch', 'waves'];
+  var VALID_EFFECTS = ['none', 'stars', 'shooting', 'aurora', 'petals', 'bubbles'];
+  var LIGHT_THEMES = ['mongsil', 'manuscript', 'dawn', 'mist', 'lilac', 'mint'];
+  function isLightTheme(t) { return LIGHT_THEMES.indexOf(t) !== -1; }
   var DEFAULT_SETTINGS = {
-    theme: 'observatory',
+    theme: 'mongsil',
+    pattern: 'none',
+    effect: 'none',
     nickname: '',
     onboarded: false
   };
@@ -74,10 +81,20 @@
     return 'observatory';
   }
 
+  function migratePattern(p) {
+    return VALID_PATTERNS.indexOf(p) !== -1 ? p : 'none';
+  }
+
+  function migrateEffect(e) {
+    return VALID_EFFECTS.indexOf(e) !== -1 ? e : 'none';
+  }
+
   function getSettings() {
     var s = read(KEY_SETTINGS, null);
     var merged = s ? Object.assign({}, DEFAULT_SETTINGS, s) : Object.assign({}, DEFAULT_SETTINGS);
     merged.theme = migrateTheme(merged.theme);
+    merged.pattern = migratePattern(merged.pattern);
+    merged.effect = migrateEffect(merged.effect);
     return merged;
   }
 
@@ -173,18 +190,67 @@
 
   /* 테마 메타 (설정 화면 스와치 피커용) */
   var THEMES = [
+    { id: 'mongsil',     label: '몽실', desc: '포근한 구름빛 보라',
+      swatch: ['#fbfaff', '#3d3858', '#7b55ea'] },
     { id: 'observatory', label: '천문대', desc: '심야의 잉크빛 성좌',
       swatch: ['#0b1020', '#e9eafb', '#c9a04e'] },
     { id: 'manuscript',  label: '필사본', desc: '오래된 종이와 잉크',
       swatch: ['#efe6d2', '#2a2419', '#9a6b3f'] },
     { id: 'specimen',    label: '수장고', desc: '무채색 표본 카탈로그',
-      swatch: ['#1a1d22', '#e7e9ec', '#7f8b96'] }
+      swatch: ['#1a1d22', '#e7e9ec', '#7f8b96'] },
+    { id: 'amethyst',    label: '자수정', desc: '보랏빛 꿈안개',
+      swatch: ['#120a1e', '#f1eafb', '#c08adb'] },
+    { id: 'dawn',        label: '여명', desc: '동트는 분홍빛 새벽',
+      swatch: ['#f4ebf2', '#3a2630', '#b5567e'] },
+    { id: 'abyss',       label: '심해', desc: '심해의 인광',
+      swatch: ['#05161d', '#e2f3f4', '#43c6b8'] },
+    { id: 'mist',        label: '안개', desc: '맑은 새벽 안개',
+      swatch: ['#eef1f6', '#243040', '#4f7cac'] },
+    { id: 'lilac',       label: '라일락', desc: '은은한 라일락빛',
+      swatch: ['#f1ecf6', '#322a3d', '#8662b5'] },
+    { id: 'mint',        label: '민트', desc: '산뜻한 박하빛',
+      swatch: ['#e9f3ee', '#1f3329', '#2f9d78'] }
   ];
+
+  /* 배경 패턴 메타 (설정 화면 피커용) */
+  var PATTERNS = [
+    { id: 'none',       label: '없음',   desc: '패턴 없이 깔끔하게' },
+    { id: 'dots',       label: '도트',   desc: '점점이 박힌 작은 점' },
+    { id: 'grid',       label: '모눈',   desc: '가는 격자 노트' },
+    { id: 'diagonal',   label: '사선',   desc: '비스듬한 빗금' },
+    { id: 'crosshatch', label: '격자무늬', desc: '교차하는 빗금' },
+    { id: 'waves',      label: '물결',   desc: '겹치는 비늘 물결' }
+  ];
+
+  /* 배경 효과 메타 (움직이는 효과 · 설정 화면 피커용)
+   * mode: 'both' 공통 · 'dark' 다크 테마 전용 · 'light' 밝은 테마 전용 */
+  var EFFECTS = [
+    { id: 'none',     label: '없음',   desc: '움직임 없이 고요하게',   mode: 'both' },
+    { id: 'stars',    label: '별빛',   desc: '반짝이는 밤하늘 별',     mode: 'dark' },
+    { id: 'shooting', label: '유성우', desc: '가끔 흐르는 별똥별',     mode: 'dark' },
+    { id: 'aurora',   label: '오로라', desc: '천천히 흐르는 빛 무리',  mode: 'both' },
+    { id: 'petals',   label: '꽃잎',   desc: '흩날리며 떨어지는 꽃잎', mode: 'light' },
+    { id: 'bubbles',  label: '비눗방울', desc: '두둥실 떠오르는 방울',  mode: 'light' }
+  ];
+
+  // 현재 테마 밝기에 맞는 효과 목록 (피커용)
+  function effectsFor(theme) {
+    var light = isLightTheme(theme);
+    return EFFECTS.filter(function (f) {
+      return f.mode === 'both' || f.mode === (light ? 'light' : 'dark');
+    });
+  }
 
   global.Store = {
     EMOTIONS: EMOTIONS,
     THEMES: THEMES,
+    PATTERNS: PATTERNS,
+    EFFECTS: EFFECTS,
     VALID_THEMES: VALID_THEMES,
+    VALID_PATTERNS: VALID_PATTERNS,
+    VALID_EFFECTS: VALID_EFFECTS,
+    isLightTheme: isLightTheme,
+    effectsFor: effectsFor,
     emotionById: emotionById,
     getSettings: getSettings,
     saveSettings: saveSettings,

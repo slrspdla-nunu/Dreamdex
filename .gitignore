@@ -1,0 +1,6 @@
+# 로컬 도구 설정
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store

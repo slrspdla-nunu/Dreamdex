@@ -40,8 +40,7 @@
         datasets: [{
           data: data,
           backgroundColor: colors,
-          borderColor: 'rgba(0,0,0,0.25)',
-          borderWidth: 2,
+          borderWidth: 0,
           hoverOffset: 8
         }]
       },
@@ -101,14 +100,48 @@
       person: cssv('--cat-person', '#e08bb5'),
       situation: cssv('--cat-situation', '#9a8bf0')
     };
-    // 라벨 색은 테마에 맞춰 동적으로
+    // 라벨 색·연결선 색·라벨 배경(그림자)은 테마에 맞춰 동적으로
     var labelColor = cssv('--text', '#e9eafb');
+    var edgeColor = cssv('--text-faint', '#646a8e');
+    var bgColor = cssv('--bg', '#080b16');
+    // #rrggbb → "r,g,b" (rgba 합성용)
+    function rgbOf(hex) {
+      var h = (hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      var n = parseInt(h, 16);
+      if (isNaN(n) || h.length < 6) return '150,150,220';
+      return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+    }
+    var edgeRGB = rgbOf(edgeColor);
+
+    // 밝은 테마에선 카테고리 색 대신 '밝고 화사한 고정 3색'(노랑·코랄·하늘) 사용
+    var theme = document.documentElement.getAttribute('data-theme') || (global.Store.getSettings().theme);
+    var lightTheme = global.Store.isLightTheme ? global.Store.isLightTheme(theme) : false;
+    var LIGHT_NODE = {
+      place:     { h: 42,  s: 90, l: 53 },  // 밝은 호박/노랑
+      person:    { h: 340, s: 85, l: 64 },  // 밝은 코랄/핑크
+      situation: { h: 198, s: 80, l: 56 }   // 밝은 하늘
+    };
+    function darkTone(hex) {
+      var rgb = rgbOf(hex);
+      return { fill: hex, glow: function (a) { return 'rgba(' + rgb + ',' + a + ')'; } };
+    }
+    function lightTone(c) {
+      return {
+        fill: 'hsl(' + c.h + ',' + c.s + '%,' + c.l + '%)',
+        glow: function (a) { return 'hsla(' + c.h + ',' + c.s + '%,' + (c.l + 8) + '%,' + a + ')'; }
+      };
+    }
+    var nodeTones = {};
+    ['place', 'person', 'situation'].forEach(function (k) {
+      nodeTones[k] = lightTheme ? lightTone(LIGHT_NODE[k]) : darkTone(catColor[k]);
+    });
 
     // 초기 배치: 카테고리별로 원형 분산 (결정적 시드)
     var cx = W / 2, cy = H / 2;
     nodes.forEach(function (n, i) {
       var ang = (i / nodes.length) * Math.PI * 2;
-      var r = Math.min(W, H) * 0.32;
+      var r = Math.min(W, H) * 0.40;
       // 카테고리별로 약간 다른 반경
       var rr = r * (n.cat === 'person' ? 0.7 : n.cat === 'situation' ? 1.0 : 0.85);
       n.x = cx + Math.cos(ang) * rr;
@@ -119,6 +152,10 @@
     var idx = {};
     nodes.forEach(function (n) { idx[n.key] = n; });
 
+    // 노드 반지름 (빈도 기반) — 충돌 패스에서도 쓰므로 시뮬레이션 앞에 정의
+    function radius(n) { return 6 + Math.min(n.weight, 8) * 2.4; }
+    var COLLIDE_PAD = 30; // 코어 사이 최소 간격 (덜 다닥다닥 붙게)
+
     // force 시뮬레이션
     var ITER = 220;
     for (var step = 0; step < ITER; step++) {
@@ -128,7 +165,7 @@
           var a = nodes[i], b = nodes[j];
           var dx = a.x - b.x, dy = a.y - b.y;
           var dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-          var rep = 2600 / (dist * dist);
+          var rep = 4400 / (dist * dist);
           var fx = (dx / dist) * rep, fy = (dy / dist) * rep;
           a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
         }
@@ -139,14 +176,29 @@
         if (!a || !b) return;
         var dx = b.x - a.x, dy = b.y - a.y;
         var dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
-        var att = (dist - 90) * 0.012 * Math.min(e.weight, 4);
+        var att = (dist - 130) * 0.011 * Math.min(e.weight, 4);
         var fx = (dx / dist) * att, fy = (dy / dist) * att;
         a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
       });
+      // 충돌(겹침) 분리 — 코어+여백보다 가까우면 서로 밀어냄 (덩어리 방지)
+      for (var ci = 0; ci < nodes.length; ci++) {
+        for (var cj = ci + 1; cj < nodes.length; cj++) {
+          var na = nodes[ci], nb = nodes[cj];
+          var cdx = na.x - nb.x, cdy = na.y - nb.y;
+          var cd = Math.sqrt(cdx * cdx + cdy * cdy) || 0.01;
+          var minD = radius(na) + radius(nb) + COLLIDE_PAD;
+          if (cd < minD) {
+            var push = (minD - cd) / 2;
+            var ux = cdx / cd, uy = cdy / cd;
+            na.x += ux * push; na.y += uy * push;
+            nb.x -= ux * push; nb.y -= uy * push;
+          }
+        }
+      }
       // 중심 인력 + 감쇠 + 적용
       nodes.forEach(function (n) {
-        n.vx += (cx - n.x) * 0.002;
-        n.vy += (cy - n.y) * 0.002;
+        n.vx += (cx - n.x) * 0.0014;
+        n.vy += (cy - n.y) * 0.0014;
         n.vx *= 0.85; n.vy *= 0.85;
         n.x += Math.max(-12, Math.min(12, n.vx));
         n.y += Math.max(-12, Math.min(12, n.vy));
@@ -155,41 +207,68 @@
       });
     }
 
-    function radius(n) { return 7 + Math.min(n.weight, 8) * 3; }
+    // 레이아웃 결과를 캔버스 정중앙으로 정렬 (위/아래 쏠림 방지)
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(function (n) {
+      if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x;
+      if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y;
+    });
+    var offX = cx - (minX + maxX) / 2, offY = cy - (minY + maxY) / 2;
+    nodes.forEach(function (n) { n.x += offX; n.y += offY; });
 
-    function draw() {
+    // 연결 인접 맵 (호버 하이라이트용)
+    var adj = {};
+    nodes.forEach(function (n) { adj[n.key] = {}; });
+    edges.forEach(function (e) {
+      if (adj[e.source] && adj[e.target]) { adj[e.source][e.target] = 1; adj[e.target][e.source] = 1; }
+    });
+
+    // hoverIdx: 강조할 노드 인덱스(없으면 -1). 그에 연결된 별·선만 밝게.
+    function draw(hoverIdx) {
+      if (hoverIdx == null) hoverIdx = -1;
+      var hoverKey = hoverIdx >= 0 ? nodes[hoverIdx].key : null;
+      function lit(key) { return hoverIdx < 0 || key === hoverKey || (hoverKey && adj[hoverKey][key]); }
+
       ctx.clearRect(0, 0, W, H);
-      // 엣지
+      // 별자리 연결선 (얇고 은은하게, 테마색)
       edges.forEach(function (e) {
         var a = idx[e.source], b = idx[e.target];
         if (!a || !b) return;
+        var on = hoverIdx < 0 || e.source === hoverKey || e.target === hoverKey;
+        var base = Math.min(0.10 + e.weight * 0.05, 0.34);
+        var alpha = hoverIdx < 0 ? base : (on ? Math.min(base + 0.35, 0.7) : base * 0.25);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-        ctx.strokeStyle = 'rgba(150,150,220,' + Math.min(0.08 + e.weight * 0.06, 0.4) + ')';
-        ctx.lineWidth = Math.min(1 + e.weight * 0.6, 4);
+        ctx.strokeStyle = 'rgba(' + edgeRGB + ',' + alpha + ')';
+        ctx.lineWidth = Math.min(0.6 + e.weight * 0.35, 1.4);
         ctx.stroke();
       });
-      // 노드
+      // 별(노드)
       nodes.forEach(function (n) {
         var r = radius(n);
-        var col = catColor[n.cat] || '#8b7cf6';
-        // 글로우
-        var g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 2.4);
-        g.addColorStop(0, col + '88');
-        g.addColorStop(1, col + '00');
+        var tone = nodeTones[n.cat] || nodeTone('#8b7cf6');
+        var on = lit(n.key);
+        ctx.globalAlpha = on ? 1 : 0.3;
+        // 부드러운 성운빛 글로우 (넉넉하게, 겹침 방지가 있어 뭉치지 않음)
+        var g = ctx.createRadialGradient(n.x, n.y, r * 0.25, n.x, n.y, r * 2.3);
+        g.addColorStop(0, tone.glow(0.42));
+        g.addColorStop(1, tone.glow(0));
         ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(n.x, n.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(n.x, n.y, r * 2.3, 0, Math.PI * 2); ctx.fill();
         // 코어
         ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = col; ctx.fill();
-        // 라벨 (테마 대응)
-        ctx.fillStyle = labelColor;
+        ctx.fillStyle = tone.fill; ctx.fill();
+        // 라벨 (테마 대응 + 배경색 그림자 1겹으로 가독)
         ctx.font = '600 12px Paperozi, system-ui, sans-serif';
         ctx.textAlign = 'center';
+        ctx.fillStyle = bgColor;
+        ctx.fillText(n.name, n.x + 0.6, n.y + r + 14.6);
+        ctx.fillStyle = labelColor;
         ctx.fillText(n.name, n.x, n.y + r + 14);
+        ctx.globalAlpha = 1;
       });
     }
-    draw();
+    draw(-1);
 
     // 클릭 → 노드 히트 테스트
     canvas.onclick = function (ev) {
@@ -201,16 +280,21 @@
         if (d <= radius(n) + 6) { if (onNodeClick) onNodeClick(n); return; }
       }
     };
+    var hovered = -1;
     canvas.onmousemove = function (ev) {
       var r2 = canvas.getBoundingClientRect();
       var mx = ev.clientX - r2.left, my = ev.clientY - r2.top;
-      var hit = false;
+      var hit = -1;
       for (var i = 0; i < nodes.length; i++) {
         var n = nodes[i];
         var d = Math.sqrt((mx - n.x) * (mx - n.x) + (my - n.y) * (my - n.y));
-        if (d <= radius(n) + 6) { hit = true; break; }
+        if (d <= radius(n) + 6) { hit = i; break; }
       }
-      canvas.style.cursor = hit ? 'pointer' : 'default';
+      canvas.style.cursor = hit >= 0 ? 'pointer' : 'default';
+      if (hit !== hovered) { hovered = hit; draw(hovered); }
+    };
+    canvas.onmouseleave = function () {
+      if (hovered !== -1) { hovered = -1; draw(-1); }
     };
   }
 
