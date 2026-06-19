@@ -91,6 +91,45 @@
           'px;--dur:' + bdur + 's;animation-delay:' + bdel + 's"></span>';
       }
     }
+    if (e === 'softdots') {
+      // 화면 곳곳에서 부드럽게 명멸하는 점
+      for (i = 0; i < 46; i++) {
+        var sx = (i * 43 + 11) % 100, sy = (i * 71 + 5) % 100;
+        var ssz = ((i % 4) * 1.6 + 3).toFixed(1);
+        var sdur = (3 + (i % 5) * 0.8).toFixed(1), sdel = ((i % 8) * 0.5).toFixed(2);
+        html += '<span class="fx-softdot" style="left:' + sx + '%;top:' + sy + '%;width:' + ssz + 'px;height:' + ssz +
+          'px;--dur:' + sdur + 's;animation-delay:' + sdel + 's"></span>';
+      }
+    }
+    if (e === 'glow') {
+      // 천천히 떠다니는 흐릿한 빛무리
+      var gcols = ['var(--accent)', 'var(--accent-2)', 'var(--cat-place)', 'var(--cat-situation)', 'var(--accent-2)'];
+      for (i = 0; i < 6; i++) {
+        var gx = (i * 31 + 8) % 92, gy = (i * 47 + 6) % 86;
+        var gsz = 130 + (i % 4) * 60;
+        var gdur = (12 + (i % 5) * 2.4).toFixed(1), gdel = (i * -1.6).toFixed(1);
+        var gdx = ((i % 2 ? 1 : -1) * (4 + (i % 3) * 2)) + 'vw';
+        var gdy = ((i % 2 ? -1 : 1) * (3 + (i % 3) * 2)) + 'vh';
+        html += '<span class="fx-glow" style="left:' + gx + '%;top:' + gy + '%;width:' + gsz + 'px;height:' + gsz +
+          'px;--gc:' + gcols[i % gcols.length] + ';--dx:' + gdx + ';--dy:' + gdy + ';--dur:' + gdur +
+          's;animation-delay:' + gdel + 's"></span>';
+      }
+    }
+    if (e === 'gradient') {
+      // 전체 화면을 천천히 일렁이는 색의 막 (한 겹)
+      html += '<span class="fx-gradient"></span>';
+    }
+    if (e === 'particles') {
+      // 아래에서 위로 천천히 떠오르는 작은 입자
+      for (i = 0; i < 26; i++) {
+        var ptx = (i * 39 + 7) % 100;
+        var ptsz = ((i % 3) * 1.5 + 2.5).toFixed(1);
+        var ptdur = (10 + (i % 6) * 1.8).toFixed(1), ptdel = (i * 0.7).toFixed(1);
+        var ptdrift = (((i % 2 ? 1 : -1) * (8 + (i % 4) * 6))) + 'px';
+        html += '<span class="fx-particle" style="left:' + ptx + '%;width:' + ptsz + 'px;height:' + ptsz +
+          'px;--drift:' + ptdrift + ';--dur:' + ptdur + 's;animation-delay:' + ptdel + 's"></span>';
+      }
+    }
     host.innerHTML = html;
   };
 
@@ -155,9 +194,15 @@
     if (Viz && Viz.destroyChart) Viz.destroyChart();
 
     var main = document.getElementById('main');
+    var appEl = document.querySelector('.app');
+    // 홈: 대시보드 전용 레이아웃 (한 화면에 맞춤, 스크롤 없음)
     var isDashboard = path === '/' || path === '';
+    // 아카이브·도감: 일반 .main 패딩 유지 + 한 화면 고정 셸에서 메인만 내부 스크롤
+    var isScrollShell = path === '/dreams' || path.indexOf('/dex') === 0;
     main.classList.toggle('main-dashboard', isDashboard);
-    document.querySelector('.app').classList.toggle('app-dashboard', isDashboard);
+    appEl.classList.toggle('app-dashboard', isDashboard);
+    main.classList.toggle('main-scroll', isScrollShell);
+    appEl.classList.toggle('app-scroll', isScrollShell);
     var matched = false;
     for (var i = 0; i < routes.length; i++) {
       var m = path.match(routes[i][0]);

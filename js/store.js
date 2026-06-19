@@ -13,13 +13,15 @@
   var KEY_SETTINGS = 'dreamdex.settings.v1';
 
   /* 감정 정의 (단일 선택) — 표시는 Icons.emotion(id) 커스텀 글리프 사용 */
+  // color 는 테마 토큰(var(--emo-*)) — CSS에서 테마 강조색과 섞여 자동 조화.
+  // Chart.js 캔버스처럼 실제 색이 필요한 곳은 charts.js 에서 resolve 한다.
   var EMOTIONS = [
-    { id: 'happy',   label: '행복',   color: '#f5c451' },
-    { id: 'wonder',  label: '신기함', color: '#56cdbe' },
-    { id: 'anxiety', label: '불안',   color: '#e8995a' },
-    { id: 'fear',    label: '공포',   color: '#8a7ef0' },
-    { id: 'sadness', label: '슬픔',   color: '#5b9bd5' },
-    { id: 'longing', label: '그리움', color: '#e08bb5' }
+    { id: 'happy',   label: '행복',   color: 'var(--emo-happy)' },
+    { id: 'wonder',  label: '신기함', color: 'var(--emo-wonder)' },
+    { id: 'anxiety', label: '불안',   color: 'var(--emo-anxiety)' },
+    { id: 'fear',    label: '공포',   color: 'var(--emo-fear)' },
+    { id: 'sadness', label: '슬픔',   color: 'var(--emo-sadness)' },
+    { id: 'longing', label: '그리움', color: 'var(--emo-longing)' }
   ];
 
   function emotionById(id) {
@@ -59,16 +61,17 @@
   }
 
   /* ------------------------------ 설정 ------------------------------- */
-  var VALID_THEMES = ['mongsil', 'observatory', 'manuscript', 'specimen', 'amethyst', 'dawn', 'abyss',
+  var VALID_THEMES = ['mongsil', 'pool', 'observatory', 'manuscript', 'specimen', 'amethyst', 'dawn', 'abyss',
                       'mist', 'lilac', 'mint'];
   var VALID_PATTERNS = ['none', 'dots', 'grid', 'diagonal', 'crosshatch', 'waves'];
-  var VALID_EFFECTS = ['none', 'stars', 'shooting', 'aurora', 'petals', 'bubbles'];
-  var LIGHT_THEMES = ['mongsil', 'manuscript', 'dawn', 'mist', 'lilac', 'mint'];
+  var VALID_EFFECTS = ['none', 'stars', 'shooting', 'aurora', 'petals', 'bubbles',
+                       'softdots', 'glow', 'gradient', 'particles'];
+  var LIGHT_THEMES = ['mongsil', 'pool', 'manuscript', 'dawn', 'mist', 'lilac', 'mint'];
   function isLightTheme(t) { return LIGHT_THEMES.indexOf(t) !== -1; }
   var DEFAULT_SETTINGS = {
     theme: 'mongsil',
-    pattern: 'none',
-    effect: 'none',
+    pattern: 'dots',
+    effect: 'aurora',
     nickname: '',
     onboarded: false
   };
@@ -192,6 +195,8 @@
   var THEMES = [
     { id: 'mongsil',     label: '몽실', desc: '포근한 구름빛 보라',
       swatch: ['#fbfaff', '#3d3858', '#7b55ea'] },
+    { id: 'pool',        label: '수영장', desc: '청량한 물빛 수영장',
+      swatch: ['#f0fbff', '#14414f', '#11a7c8'] },
     { id: 'observatory', label: '천문대', desc: '심야의 잉크빛 성좌',
       swatch: ['#0b1020', '#e9eafb', '#c9a04e'] },
     { id: 'manuscript',  label: '필사본', desc: '오래된 종이와 잉크',
@@ -230,7 +235,11 @@
     { id: 'shooting', label: '유성우', desc: '가끔 흐르는 별똥별',     mode: 'dark' },
     { id: 'aurora',   label: '오로라', desc: '천천히 흐르는 빛 무리',  mode: 'both' },
     { id: 'petals',   label: '꽃잎',   desc: '흩날리며 떨어지는 꽃잎', mode: 'light' },
-    { id: 'bubbles',  label: '비눗방울', desc: '두둥실 떠오르는 방울',  mode: 'light' }
+    { id: 'bubbles',  label: '비눗방울', desc: '두둥실 떠오르는 방울',  mode: 'light' },
+    { id: 'softdots', label: '은은한 점', desc: '부드러운 점 효과',     mode: 'both' },
+    { id: 'glow',     label: '빛 번짐',  desc: '은은한 빛 효과',        mode: 'both' },
+    { id: 'gradient', label: '그라데이션', desc: '부드러운 색상 변화',  mode: 'both' },
+    { id: 'particles', label: '입자',    desc: '자연스러운 입자 효과',  mode: 'both' }
   ];
 
   // 현재 테마 밝기에 맞는 효과 목록 (피커용)

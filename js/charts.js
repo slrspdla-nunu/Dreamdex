@@ -8,9 +8,21 @@
 
   var _chart = null; // 현재 감정 차트 인스턴스
 
+  // CSS 값(var()/color-mix 등)을 실제 rgb 로 해석 — 캔버스(Chart.js)는 var를 못 읽음
+  function resolveColor(val, fb) {
+    if (!val) return fb;
+    if (val.indexOf('var(') === -1 && val.indexOf('color-mix') === -1) return val;
+    var probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;width:0;height:0;color:' + val;
+    document.body.appendChild(probe);
+    var c = getComputedStyle(probe).color;
+    document.body.removeChild(probe);
+    return c || fb;
+  }
+
   function emotionColor(id) {
     var e = global.Store.emotionById(id);
-    return e ? e.color : '#8b7cf6';
+    return resolveColor(e ? e.color : '', '#8b7cf6');
   }
 
   /* ----------------------- 감정 분포 도넛 차트 ----------------------- */
@@ -20,7 +32,7 @@
     emotions.forEach(function (e) {
       labels.push(e.label);
       data.push(stats.emotionCount[e.id] || 0);
-      colors.push(e.color);
+      colors.push(resolveColor(e.color, '#8b7cf6'));
     });
 
     if (_chart) { _chart.destroy(); _chart = null; }
@@ -33,6 +45,10 @@
     }
 
     var textColor = getComputedStyle(document.body).getPropertyValue('--text-dim') || '#9698bd';
+    // 좁은 화면에선 범례를 아래로 — 오른쪽 배치 시 모바일에서 범례가 잘림
+    var legendPos = (global.innerWidth && global.innerWidth <= 600) ? 'bottom' : 'right';
+    // 하단 범례일 때 도넛을 약간 줄여(중앙 정렬) 도넛↔범례 사이 여백 확보
+    var donutRadius = (legendPos === 'bottom') ? '78%' : '100%';
     _chart = new global.Chart(canvas.getContext('2d'), {
       type: 'doughnut',
       data: {
@@ -47,10 +63,11 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        radius: donutRadius,
         cutout: '62%',
         plugins: {
           legend: {
-            position: 'right',
+            position: legendPos,
             labels: { color: textColor.trim(), padding: 16, font: { size: 13 }, usePointStyle: true }
           }
         }
@@ -246,7 +263,7 @@
       // 별(노드)
       nodes.forEach(function (n) {
         var r = radius(n);
-        var tone = nodeTones[n.cat] || nodeTone('#8b7cf6');
+        var tone = nodeTones[n.cat] || darkTone('#8b7cf6');
         var on = lit(n.key);
         ctx.globalAlpha = on ? 1 : 0.3;
         // 부드러운 성운빛 글로우 (넉넉하게, 겹침 방지가 있어 뭉치지 않음)

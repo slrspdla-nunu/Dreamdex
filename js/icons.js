@@ -85,32 +85,87 @@
   }
 
   /* ---------------------------- 빈 상태 일러스트 ---------------------------- */
-  // 성좌(별자리) 라인 — 종류별로 약간 다른 별 배치
+  // 성좌(별자리) — 페이지마다 의미를 담은 별 그림.
+  //   p: 별 좌표 [[x,y]…] (viewBox 100×72)
+  //   e: 잇는 선 [[i,j]…]  (생략하면 순차 연결)
+  //   hub: 4갈래로 강조할 별 인덱스(생략 시 0번)
   var CONSTELLATIONS = {
-    archive: [[10,46],[30,22],[52,38],[74,16],[88,40]],
-    search:  [[14,20],[34,40],[20,58],[54,50],[80,26],[86,52]],
-    stats:   [[12,52],[30,36],[48,44],[66,20],[84,34]],
-    map:     [[18,24],[42,18],[60,40],[36,54],[78,48],[88,22]],
-    error:   [[16,40],[40,24],[44,52],[70,30],[84,50]]
+    // 홈 / 보관소 — 집
+    home: {
+      p: [[50,11],[29,29],[71,29],[31,58],[69,58]],
+      e: [[0,1],[0,2],[1,2],[1,3],[2,4],[3,4]], hub: 0
+    },
+    // 아카이브 / 수집 — 초승달
+    archive: {
+      p: [[64,10],[48,9],[34,18],[27,33],[30,49],[42,61],[59,63]],
+      e: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]], hub: 0
+    },
+    // 검색 — 돋보기 (원 + 손잡이)
+    search: {
+      p: [[40,11],[55,20],[55,38],[40,47],[25,38],[25,20],[52,43],[68,60]],
+      e: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[3,6],[6,7]], hub: 7
+    },
+    // 통계 — 우상향 성장선
+    stats: {
+      p: [[11,57],[27,46],[41,53],[57,31],[72,40],[89,16]],
+      e: [[0,1],[1,2],[2,3],[3,4],[4,5]], hub: 5
+    },
+    // 꿈 지도 — 연결망 (허브 + 가지 + 둘레)
+    map: {
+      p: [[50,36],[22,15],[81,17],[87,52],[46,65],[13,49]],
+      e: [[0,1],[0,2],[0,3],[0,4],[0,5],[1,2],[2,3],[3,4],[4,5],[5,1]], hub: 0
+    },
+    // 오류 / 없음 — 흩어져 떠도는 작은 무리
+    error: {
+      p: [[22,25],[41,37],[37,17],[63,45],[80,27]],
+      e: [[0,2],[2,1],[1,3],[3,4]], hub: 1
+    }
   };
 
   function empty(name) {
-    var pts = CONSTELLATIONS[name] || CONSTELLATIONS.archive;
+    var c = CONSTELLATIONS[name] || CONSTELLATIONS.archive;
+    var pts = c.p, edges = c.e, hub = c.hub || 0;
     var W = 100, H = 72;
-    var path = 'M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join(' L');
+
+    // 연결선 (개별 선분 — 의도한 모양 그대로)
+    var lines;
+    if (edges) {
+      lines = edges.map(function (e) {
+        var a = pts[e[0]], b = pts[e[1]];
+        return '<line x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>';
+      }).join('');
+    } else {
+      lines = '<path d="M' + pts.map(function (p) { return p[0] + ' ' + p[1]; }).join(' L') + '"/>';
+    }
+
+    // 연결 수(차수) — 허브일수록 별을 크게
+    var deg = {};
+    if (edges) edges.forEach(function (e) { deg[e[0]] = (deg[e[0]] || 0) + 1; deg[e[1]] = (deg[e[1]] || 0) + 1; });
     var dots = pts.map(function (p, i) {
-      var r = (i === 0 || i === pts.length - 1) ? 2.6 : 2.0;
+      if (i === hub) return ''; // 허브는 아래에서 4갈래 별로
+      var r = (deg[i] || 0) >= 3 ? 2.6 : 2.0;
       return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + r + '" fill="currentColor" stroke="none"/>';
     }).join('');
-    // 흩뿌린 작은 별
+    // 강조 별 — 4갈래 반짝임
+    var hp = pts[hub];
+    var hubStar = star4(hp[0], hp[1], 4.2, 'currentColor', 0.95);
+
+    // 흩뿌린 작은 별 (은은하게 반짝임)
+    function tw(cx, cy, r, op, dur, begin) {
+      return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="currentColor" stroke="none" opacity="' + op + '">' +
+        '<animate attributeName="opacity" values="' + op + ';' + (op + 0.45) + ';' + op +
+        '" dur="' + dur + 's" begin="' + begin + 's" repeatCount="indefinite"/></circle>';
+    }
     var sprinkle =
-      '<circle cx="8" cy="14" r="0.9" fill="currentColor" stroke="none" opacity=".5"/>' +
-      '<circle cx="92" cy="60" r="0.9" fill="currentColor" stroke="none" opacity=".5"/>' +
-      '<circle cx="62" cy="64" r="0.8" fill="currentColor" stroke="none" opacity=".45"/>' +
-      '<circle cx="24" cy="66" r="0.8" fill="currentColor" stroke="none" opacity=".4"/>';
+      tw(9, 13, 0.9, 0.35, 3.4, 0) +
+      tw(92, 60, 0.9, 0.4, 4.1, 0.8) +
+      tw(63, 64, 0.8, 0.3, 3.0, 1.6) +
+      tw(20, 64, 0.8, 0.3, 4.6, 2.2) +
+      tw(86, 14, 0.7, 0.3, 3.7, 1.1);
+
     return '<svg class="empty-illust" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H +
       '" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="' + path + '" opacity="0.55"/>' + dots + sprinkle + '</svg>';
+      '<g opacity="0.45">' + lines + '</g>' + dots + hubStar + sprinkle + '</svg>';
   }
 
   /* ============================ 아늑 일러스트 (art) ============================ */
@@ -330,27 +385,26 @@
 
   // 범용 추상 장식 — 부드러운 구름 + 은은한 빛 + 반짝이 (사물 없이 깔끔)
   function dreamScene() {
+    // 색은 CSS(.dd-scene ...)에서 테마 토큰으로 지정 — 테마별 자동 대응
     var d =
       '<defs>' +
-      '<linearGradient id="dBg" x1="0" y1="0" x2="1" y2="0">' +
-        '<stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#F4EEFB"/>' +
-        '<stop offset="1" stop-color="#E6DCF4"/></linearGradient>' +
       '<radialGradient id="dGlow" cx="0.5" cy="0.5" r="0.5">' +
-        '<stop offset="0" stop-color="#fff3da" stop-opacity="0.55"/>' +
-        '<stop offset="1" stop-color="#fff3da" stop-opacity="0"/></radialGradient>' +
+        '<stop class="ds-glow-a" offset="0" stop-opacity="0.5"/>' +
+        '<stop class="ds-glow-b" offset="1" stop-opacity="0"/></radialGradient>' +
       '<filter id="dBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="6"/></filter>' +
       '</defs>';
     // 배경 없음 — 패널 면이 그대로 이어지게(경계 제거). 장식만 얹는다.
     var bg = '';
     var glow = '<ellipse cx="470" cy="250" rx="250" ry="200" fill="url(#dGlow)"/>';
-    function dot(x, y, r, o) { return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#c4b6e4" opacity="' + o + '"/>'; }
-    var stars = star4(210, 130, 9, '#f2c66a', 0.85) + star4(560, 110, 7, '#f2c66a', 0.7) +
-      star4(630, 360, 7, '#f2c66a', 0.7) + star4(330, 350, 5, '#f2c66a', 0.6) +
+    function dot(x, y, r, o) { return '<circle class="ds-dot" cx="' + x + '" cy="' + y + '" r="' + r + '" opacity="' + o + '"/>'; }
+    var stars = '<g class="ds-stars">' +
+      star4(210, 130, 9, 'currentColor', 0.85) + star4(560, 110, 7, 'currentColor', 0.7) +
+      star4(630, 360, 7, 'currentColor', 0.7) + star4(330, 350, 5, 'currentColor', 0.6) + '</g>' +
       dot(420, 90, 3, 0.5) + dot(130, 260, 2.6, 0.5) + dot(690, 230, 2.6, 0.5) + dot(470, 430, 2.8, 0.45);
     // 부드러운 구름 — 불투명 fill + 그룹 투명도(겹침선 방지), 천천히 떠다님
     function cloud(cx, cy, s, op, dist, dur, rev) {
       return '<g class="dd-cloud" opacity="' + op + '" style="--d:' + dist + 'px;animation-duration:' + dur + 's' + (rev ? ';animation-direction:alternate-reverse' : '') + '">' +
-        '<g filter="url(#dBlur)" fill="#dcd4f1" transform="translate(' + cx + ' ' + cy + ') scale(' + s + ')">' +
+        '<g class="ds-cloud-body" filter="url(#dBlur)" transform="translate(' + cx + ' ' + cy + ') scale(' + s + ')">' +
         '<circle cx="-44" cy="8" r="28"/><circle cx="-12" cy="-10" r="38"/><circle cx="22" cy="-2" r="32"/>' +
         '<circle cx="50" cy="10" r="24"/><ellipse cx="0" cy="20" rx="78" ry="26"/></g></g>';
     }

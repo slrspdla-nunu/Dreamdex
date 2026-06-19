@@ -151,13 +151,18 @@
     return out;
   }
 
-  function kwChipsHtml(keywords, unlock, clickable) {
+  function kwChipsHtml(keywords, unlock, clickable, limit, withIcon) {
     var list = visibleKeywords(keywords, unlock);
     if (!list.length) return '';
-    return '<div class="kw-chips">' + list.map(function (k) {
+    var extra = 0;
+    if (limit && list.length > limit) { extra = list.length - limit; list = list.slice(0, limit); }
+    var chips = list.map(function (k) {
       var attr = clickable ? ' data-kw="' + k.cat + ':' + k.id + '"' : '';
-      return '<span class="kw-chip cat-' + k.cat + '"' + attr + '>' + esc(k.name) + '</span>';
-    }).join('') + '</div>';
+      var ic = withIcon ? global.Icons.keyword(k.cat, k.id, 14) : '';
+      return '<span class="kw-chip cat-' + k.cat + '"' + attr + '>' + ic + esc(k.name) + '</span>';
+    }).join('');
+    if (extra) chips += '<span class="kw-more" aria-label="키워드 ' + extra + '개 더">' + global.Icons.ui('plus', { size: 13, sw: 2.4 }) + '</span>';
+    return '<div class="kw-chips">' + chips + '</div>';
   }
 
   /* ============================ 온보딩 ============================ */
@@ -214,7 +219,7 @@
           '<span class="dd-cta-copy"><b>오늘은 어떤 꿈을 꾸셨나요?</b><small>잊기 전에 오늘의 꿈을 기록해보세요</small></span>' +
           '<span class="dd-cta-arrow">' + global.Icons.ui('arrow', { size: 20 }) + '</span>' +
         '</button>' +
-        '<div class="dd-empty card view-enter"><div class="empty-art">' + global.Icons.scene('archive') + '</div>' +
+        '<div class="dd-empty card view-enter"><div class="empty-art">' + global.Icons.empty('home') + '</div>' +
           '<h3>첫 번째 꿈을 기록해보세요</h3>' +
           '<p>꿈을 기록하면 그 속의 장소·인물·상황이 자동으로 도감에 수집됩니다.<br>' +
           '둘러보고 싶다면 예시 데이터를 불러와 모든 기능을 확인할 수 있습니다.</p>' +
@@ -693,7 +698,7 @@
     if (!d) { c.innerHTML = emptyCard('error', '꿈을 찾을 수 없습니다', '삭제되었거나 잘못된 주소입니다.', '아카이브로', '/dreams'); return; }
     var dreams = Store.getDreams();
     var unlock = Classify.unlockState(dreams.length);
-    var kw = kwChipsHtml(d.keywords, unlock, true);
+    var kw = kwChipsHtml(d.keywords, unlock, true, null, true);
 
     // 읽기 메타 — 요일 · 글자수 · 기록 번호
     var WD = ['일', '월', '화', '수', '목', '금', '토'];
@@ -811,16 +816,17 @@
           : s.tier === 'hidden' ? '<span class="tier-tag tier-hidden">숨김</span>' : '';
         if (s.count > 0) {
           return '<div class="dex-slot found" data-id="' + s.id + '" style="--c:var(--node-' + cat + ')">' + tierTag +
-            '<span class="ds-icon">' + global.Icons.keyword(cat, s.id, 28) + '</span>' +
-            '<div class="ds-name">' + esc(s.name) + '</div>' +
-            '<div class="ds-count">' + s.count + '회 발견</div></div>';
+            '<span class="ds-icon">' + global.Icons.keyword(cat, s.id, 24) + '</span>' +
+            '<div class="ds-body"><div class="ds-name">' + esc(s.name) + '</div>' +
+            '<div class="ds-count">' + s.count + '회 발견</div></div></div>';
         }
         // 미발견: 발견 가능하면 ??? / 아직 잠긴 tier 면 자물쇠
         var locked = !s.discoverable;
-        var label = locked ? global.Icons.ui('lock', { size: 18 }) : '???';
+        var icon = locked ? global.Icons.ui('lock', { size: 20 }) : '?';
         return '<div class="dex-slot locked">' + tierTag +
-          '<div class="ds-name">' + label + '</div>' +
-          '<div class="ds-count">' + (locked ? tierHint(s.tier) : '미발견') + '</div></div>';
+          '<span class="ds-icon">' + icon + '</span>' +
+          '<div class="ds-body"><div class="ds-name">???</div>' +
+          '<div class="ds-count">' + (locked ? tierHint(s.tier) : '미발견') + '</div></div></div>';
       }).join('') + '</div>';
       document.getElementById('dexGrid').innerHTML = html;
     }
@@ -860,13 +866,19 @@
 
     c.innerHTML =
       '<button class="btn sm ghost" id="backBtn" style="margin-bottom:18px">← ' + DICT[cat].label + ' 도감</button>' +
-      '<div class="card view-enter" style="padding:26px 28px;margin-bottom:22px">' +
-        '<div style="font-size:.78rem;color:var(--text-faint);letter-spacing:1px">' + DICT[cat].label.toUpperCase() + '</div>' +
-        '<h1 style="margin:6px 0 4px;font-size:1.7rem">' + esc(item.name) +
-        (item.tier === 'rare' ? ' <span class="tier-tag tier-rare">희귀</span>' :
-         item.tier === 'hidden' ? ' <span class="tier-tag tier-hidden">숨김</span>' : '') + '</h1>' +
-        '<div style="color:var(--text-dim);font-size:.9rem">' +
-          (slot && slot.count ? slot.count + '개의 꿈에서 발견 · 첫 발견 ' + fmtDate(slot.firstSeen) : '아직 발견하지 못한 흔적입니다.') +
+      '<div class="card view-enter dexkw-hero" style="--c:var(--node-' + cat + ')">' +
+        '<span class="dexkw-icon">' + global.Icons.keyword(cat, id, 32) + '</span>' +
+        '<div class="dexkw-info">' +
+          '<div class="dexkw-cat">' + DICT[cat].label.toUpperCase() + '</div>' +
+          '<h1 class="dexkw-name">' + esc(item.name) +
+          (item.tier === 'rare' ? ' <span class="tier-tag tier-rare">희귀</span>' :
+           item.tier === 'hidden' ? ' <span class="tier-tag tier-hidden">숨김</span>' : '') + '</h1>' +
+          '<div class="dexkw-meta">' +
+            (slot && slot.count
+              ? '<span style="white-space:nowrap">' + slot.count + '개의 꿈에서 발견</span> · ' +
+                '<span style="white-space:nowrap">첫 발견 ' + fmtDate(slot.firstSeen) + '</span>'
+              : '아직 발견하지 못한 흔적입니다.') +
+          '</div>' +
         '</div></div>' +
       (related.length
         ? '<div class="section-label">이 흔적이 등장한 꿈</div><div class="dream-grid">' +
@@ -906,11 +918,11 @@
       '</div>' +
       '<div class="stats-grid view-enter">' +
         '<div class="card chart-wrap">' +
-          '<div class="eyebrow" style="margin-bottom:14px">감정 분포</div>' +
+          '<div class="section-label" style="margin:0 0 14px">감정 분포</div>' +
           '<div class="chart-box"><canvas id="emoChart"></canvas></div>' +
         '</div>' +
         '<div class="card chart-wrap">' +
-          '<div class="rail-head"><span class="eyebrow">감정 흐름</span>' +
+          '<div class="rail-head"><span class="section-label" style="margin:0">감정 흐름</span>' +
           '<span class="rail-sub">최근 ' + Math.min(dreams.length, 18) + '개</span></div>' +
           emotionTrendHtml(dreams) +
           '<div class="trend-cap">위로 갈수록 밝은 감정 · 왼쪽이 오래된 기록</div>' +
@@ -933,7 +945,9 @@
       return;
     }
 
-    var graph = Classify.buildGraph(dreams, 20);
+    // 모바일에선 노드를 줄여(상위 12개) 혼잡 완화
+    var maxNodes = (window.innerWidth <= 600) ? 12 : 20;
+    var graph = Classify.buildGraph(dreams, maxNodes);
     if (!graph.nodes.length) {
       c.innerHTML = head('꿈 지도', '꿈 속 요소들의 연결을 탐험합니다.') +
         emptyCard('map', '아직 그릴 연결이 없습니다', '키워드가 등장하는 꿈을 더 기록해보세요.');
@@ -1002,6 +1016,10 @@
         case 'aurora':   return 'background-image:linear-gradient(to bottom,color-mix(in srgb,var(--cat-place) 80%,transparent),transparent 80%),linear-gradient(to bottom,color-mix(in srgb,var(--cat-situation) 80%,transparent),transparent 80%);background-size:42% 100%,40% 100%;background-position:16% 0,74% 0;background-repeat:no-repeat;filter:blur(2px)';
         case 'petals':   return 'background-image:radial-gradient(circle at 30% 34%,#ffc6d4 0 3px,transparent 4px),radial-gradient(circle at 64% 58%,#ffd7c0 0 2.6px,transparent 3.6px),radial-gradient(circle at 46% 80%,#f7d3ea 0 2.6px,transparent 3.6px);opacity:.95';
         case 'bubbles':  return 'background-image:radial-gradient(circle at 32% 60%,transparent 2.5px,color-mix(in srgb,var(--accent-2) 45%,transparent) 3px,transparent 4px),radial-gradient(circle at 62% 42%,transparent 3.5px,color-mix(in srgb,var(--accent-2) 45%,transparent) 4px,transparent 5px);opacity:.9';
+        case 'softdots': return 'background-image:radial-gradient(var(--text) 1.8px,transparent 2.4px);background-size:10px 10px;opacity:.4';
+        case 'glow':     return 'background-image:radial-gradient(circle at 34% 40%,color-mix(in srgb,' + a + ' 60%,transparent),transparent 56%),radial-gradient(circle at 70% 64%,color-mix(in srgb,var(--accent) 55%,transparent),transparent 58%);filter:blur(3px);opacity:.85';
+        case 'gradient': return 'background-image:linear-gradient(120deg,color-mix(in srgb,var(--accent) 40%,transparent),transparent 46%,color-mix(in srgb,' + a + ' 46%,transparent));opacity:.9';
+        case 'particles':return 'background-image:radial-gradient(circle at 26% 70%,var(--text) 0 1.6px,transparent 2.2px),radial-gradient(circle at 54% 44%,var(--text) 0 1.4px,transparent 2px),radial-gradient(circle at 78% 78%,var(--text) 0 1.4px,transparent 2px);opacity:.55';
         default:         return '';
       }
     }
@@ -1135,7 +1153,7 @@
   }
   function emptyCard(illustKey, title, desc, btnLabel, btnPath) {
     var btn = btnLabel ? '<div style="margin-top:18px"><button class="btn primary" data-go="' + btnPath + '">' + esc(btnLabel) + '</button></div>' : '';
-    var el = '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.scene(illustKey) + '</div>' +
+    var el = '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.empty(illustKey) + '</div>' +
       '<h3>' + esc(title) + '</h3>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + btn + '</div>';
     return el;
   }
@@ -1161,7 +1179,7 @@
       '<div class="dc-date">' + fmtDate(d.date) + '</div></div>' +
       global.Icons.emotionSticker(d.emotion, 30) + '</div>' +
       '<div class="dc-excerpt">' + esc(excerpt) + (d.content.length > 120 ? '…' : '') + '</div>' +
-      '<div class="dc-foot">' + (kwChipsHtml(d.keywords, unlock, false) || '<span></span>') +
+      '<div class="dc-foot">' + (kwChipsHtml(d.keywords, unlock, false, 3) || '<span></span>') +
       '<button class="fav-btn ' + (d.favorite ? 'on' : '') + '" data-fav="' + d.id + '" aria-label="즐겨찾기">' +
       (d.favorite ? '★' : '☆') + '</button></div>' +
       '</div>';
