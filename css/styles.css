@@ -1780,11 +1780,13 @@ button { font-family: inherit; cursor: pointer; }
   /* 모든 화면의 패널(사이드바+메인)을 홈 페이지 기준 고정 높이로 통일(905px ≈ 홈이 스크롤 없이 딱 맞는 높이).
      → 어느 페이지·앱/웹이든 main·사이드바 크기와 설정 위치가 동일하고, 홈은 PC 웹처럼 스크롤 없이 들어감.
      세로로 긴 창에선 바깥 위·아래 여백, 내용 긴 페이지는 메인이 내부 스크롤. */
-  .app, .app.app-dashboard { height: min(905px, calc(100vh - 40px)); min-height: 0; overflow: hidden; }
+  .app { height: min(905px, calc(100vh - 40px)); min-height: 0; overflow: hidden; }
+  /* 홈 패널은 짧은 창에서도 콘텐츠가 들어가도록 창 높이를 꽉 씀(바깥 여백 0) → 스크롤바 없이 한 화면.
+     충분히 큰 창에선 905px로 고정되고 #appShell이 가운데 정렬해 바깥 여백이 생김. */
+  .app.app-dashboard { height: min(905px, 100vh); margin-block: 0; min-height: 0; overflow: hidden; }
   .main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-  /* 홈은 한 화면에 딱 맞는 쇼피스 → 콘텐츠가 들어가면 스크롤바 없이 위·아래 여백 대칭 정렬.
-     창이 짧아 콘텐츠가 안 들어가면 잘라내지 말고 스크롤되게(배너 아래 여백까지 볼 수 있게). */
-  .main.main-dashboard { overflow-y: auto; display: flex; flex-direction: column; justify-content: safe center; }
+  /* 홈은 한 화면에 딱 맞는 쇼피스 → 스크롤바 없이, 남는 높이는 위·아래 똑같이 나눠 정렬(여백 대칭) */
+  .main.main-dashboard { overflow: hidden; display: flex; flex-direction: column; justify-content: safe center; }
 }
 
 .app .sidebar {
