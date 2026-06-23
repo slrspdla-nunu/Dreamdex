@@ -601,6 +601,8 @@ button { font-family: inherit; cursor: pointer; }
   z-index: 1;
   display: flex;
   min-height: calc(100vh - 2 * var(--shell-gap));
+  /* 창이 1200px보다 좁아도(예: PC 설치 앱 창) 양옆 여백을 유지해 데스크톱 브라우저와 동일한 프레임 룩 */
+  width: calc(100% - 2 * var(--shell-gap));
   max-width: 1200px;
   margin: var(--shell-gap) auto;
   /* 사이드바+메인을 하나의 패널로 묶어 뒤로 은은한 그림자 */
@@ -1552,6 +1554,7 @@ button { font-family: inherit; cursor: pointer; }
   /* 모바일에선 패널/그림자 해제 — 전체 폭 사용 */
   .app {
     flex-direction: column;
+    width: auto;          /* 모바일은 전체 폭 사용 (데스크톱 프레임 여백 해제) */
     margin: 0 auto;
     min-height: 100vh;
     border: none;
