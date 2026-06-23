@@ -47,15 +47,14 @@
     } catch (e) { return false; }
   }
 
-  function isMobile() { return /Android|iPhone|iPad|iPod/i.test(global.navigator.userAgent || ''); }
-
   function signIn() {
     if (!ready) return Promise.reject(new Error('오프라인이거나 로그인 모듈을 불러오지 못했어요'));
     var prov = new global.firebase.auth.GoogleAuthProvider();
-    if (isMobile()) return auth.signInWithRedirect(prov);   // 모바일은 리디렉트가 안정적
+    // 팝업 우선(모바일 포함) — GitHub Pages는 firebaseapp.com과 도메인이 달라
+    // 리디렉트 방식이 스토리지 분리로 자주 실패하므로 팝업이 더 안정적.
     return auth.signInWithPopup(prov).catch(function (err) {
-      // 팝업 차단/취소 → 리디렉트로 폴백
-      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user')) {
+      // 팝업이 막히거나 닫힌 경우에만 리디렉트로 폴백
+      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/operation-not-supported-in-this-environment')) {
         return auth.signInWithRedirect(prov);
       }
       throw err;
