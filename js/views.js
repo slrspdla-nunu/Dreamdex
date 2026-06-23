@@ -1363,7 +1363,7 @@
     if (!unlock.mapOpen) {
       c.innerHTML = head('꿈 지도', '꿈 속 요소들의 연결을 탐험합니다.') +
         emptyCard('map', '꿈 지도는 10개의 꿈에서 열립니다',
-          '현재 ' + dreams.length + '개 · ' + (10 - dreams.length) + '개를 더 기록하면 무의식의 연결망이 그려집니다.',
+          '현재 ' + dreams.length + '개 · ' + (10 - dreams.length) + '개를 더 기록하면|| 무의식의 연결망이 그려집니다.',
           '＋ 꿈 기록하기', '/new');
       return;
     }
@@ -1649,7 +1649,7 @@
   function emptyCard(illustKey, title, desc, btnLabel, btnPath) {
     var btn = btnLabel ? '<div style="margin-top:18px"><button class="btn primary" data-go="' + btnPath + '">' + esc(btnLabel) + '</button></div>' : '';
     var el = '<div class="card empty view-enter"><div class="empty-art">' + global.Icons.empty(illustKey) + '</div>' +
-      '<h3>' + esc(title) + '</h3>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + btn + '</div>';
+      '<h3>' + esc(title) + '</h3>' + (desc ? '<p>' + esc(desc).replace(/\|\|/g, '<br class="br-m">') + '</p>' : '') + btn + '</div>';
     return el;
   }
   // 토스트 본문(글리프 + 텍스트)

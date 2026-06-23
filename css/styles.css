@@ -1566,6 +1566,12 @@ button { font-family: inherit; cursor: pointer; }
   /* 모바일 전용 줄바꿈 활성화 */
   .br-m { display: inline; }
 
+  /* 빈 상태 카드: 모바일에선 텍스트·여백 축소 (제목/설명이 너무 컸음) */
+  .card.empty { padding: 38px 20px; }
+  .card.empty h3 { font-size: 1.08rem; line-height: 1.4; }
+  .card.empty p { font-size: 0.85rem; line-height: 1.55; }
+  .card.empty .empty-art { margin-bottom: 12px; }
+
   /* 상세 헤더: 모바일에선 세로로 쌓아 제목이 전체 폭을 쓰게(액션 버튼에 밀려 줄바꿈되던 문제) */
   .detail-head { flex-direction: column; gap: 18px; }
   .detail-head .detail-title { margin-bottom: 10px; }
