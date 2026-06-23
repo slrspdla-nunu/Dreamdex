@@ -282,11 +282,11 @@
         '</button>' +
         '<div class="dd-empty card view-enter"><div class="empty-art">' + global.Icons.empty('home') + '</div>' +
           '<h3>첫 번째 꿈을 기록해보세요</h3>' +
-          '<p>꿈을 기록하면 그 속의 장소·인물·상황이 자동으로 도감에 수집됩니다.<br>' +
-          '둘러보고 싶다면 예시 데이터를 불러와 모든 기능을 확인할 수 있습니다.</p>' +
+          '<p>꿈을 기록하면 그 속의 장소·인물·상황이<br class="br-m">자동으로 도감에 수집됩니다.<br>' +
+          '둘러보고 싶다면 예시 데이터를 불러와<br class="br-m">모든 기능을 확인할 수 있습니다.</p>' +
           '<div class="empty-actions">' +
             '<button class="btn primary" data-go="/new">＋ 첫 꿈 기록하기</button>' +
-            '<button class="btn ghost" id="sampleBtnDash">예시 데이터로 둘러보기</button>' +
+            '<button class="btn ghost" id="sampleBtnDash">예시 데이터 보기</button>' +
           '</div></div></div>';
       var sb = document.getElementById('sampleBtnDash');
       if (sb) sb.onclick = function () {
