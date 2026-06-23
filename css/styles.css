@@ -1573,7 +1573,9 @@ button { font-family: inherit; cursor: pointer; }
   .card.empty .empty-art, .dd-empty .empty-art { margin-bottom: 12px; }
   /* 빈 카드 버튼: 모바일에서도 양옆으로 나란히 (동일 너비) */
   .empty-actions { flex-wrap: nowrap; gap: 8px; }
-  .empty-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; padding-left: 10px; padding-right: 10px; font-size: 0.86rem; }
+  .empty-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; }
+  /* 빈 안내 카드의 모든 버튼 패딩·글자 통일 (대시보드 2버튼 + 지도/도감/통계 단일 버튼) */
+  .empty-actions .btn, .card.empty .btn { padding: 11px 14px; font-size: 0.88rem; }
 
   /* 상세 헤더: 모바일에선 세로로 쌓아 제목이 전체 폭을 쓰게(액션 버튼에 밀려 줄바꿈되던 문제) */
   .detail-head { flex-direction: column; gap: 18px; }
