@@ -1456,6 +1456,11 @@
 
     c.innerHTML = head('설정', '보관소를 관리합니다.') +
       '<div class="card view-enter" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
+        '<div class="eyebrow" style="margin-bottom:14px">프로필</div>' +
+        row('닉네임', '<input id="nickInput" class="input" style="max-width:220px" value="' + esc(s.nickname) + '" placeholder="닉네임">') +
+        '<p style="color:var(--text-faint);margin:10px 0 0;font-size:.8rem">홈 화면 인사말에 쓰여요. 로그인하면 기기 간에 함께 동기화돼요.</p>' +
+      '</div>' +
+      '<div class="card view-enter" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
         '<div class="eyebrow" style="margin-bottom:14px">테마</div>' +
         '<div class="theme-grid" id="themeGrid">' + themeCards + '</div>' +
         '<div style="border-top:1px solid var(--border);margin:20px 0 16px"></div>' +
@@ -1464,8 +1469,6 @@
         '<div style="border-top:1px solid var(--border);margin:20px 0 16px"></div>' +
         '<div class="eyebrow" style="margin-bottom:14px">배경 효과</div>' +
         '<div class="theme-grid" id="effectGrid">' + fxCards + '</div>' +
-        '<div style="border-top:1px solid var(--border);margin:20px 0 4px"></div>' +
-        row('닉네임', '<input id="nickInput" class="input" style="max-width:220px" value="' + esc(s.nickname) + '" placeholder="닉네임">') +
         ((s.lock && s.lock.pin)
           ? '<div style="border-top:1px solid var(--border);margin:8px 0 0"></div>' +
             row('일기 잠금 PIN', '<span style="display:inline-flex;gap:8px">' +
@@ -1536,7 +1539,7 @@
       btn.classList.add('active');
     });
     document.getElementById('nickInput').addEventListener('change', function () {
-      Store.saveSettings({ nickname: this.value.trim() });
+      Store.setNickname(this.value);
       toast(tmsg('check', '닉네임을 저장했습니다.'));
     });
     document.getElementById('exportBtn').onclick = function () {

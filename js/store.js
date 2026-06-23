@@ -130,13 +130,16 @@
   function onChange(fn) { if (typeof fn === 'function') changeFns.push(fn); }
   function emitChange() { for (var i = 0; i < changeFns.length; i++) { try { changeFns[i](); } catch (e) {} } }
 
-  function exportSyncData() { return { v: 1, updatedAt: Date.now(), dreams: getDreams(), drafts: getDrafts() }; }
+  function exportSyncData() { return { v: 1, updatedAt: Date.now(), dreams: getDreams(), drafts: getDrafts(), nickname: getSettings().nickname || '' }; }
   function importSyncData(obj) {
     if (!obj || !Array.isArray(obj.dreams)) throw new Error('동기화 데이터가 올바르지 않아요');
     write(KEY_DREAMS, obj.dreams);
     if (Array.isArray(obj.drafts)) write(KEY_DRAFTS, obj.drafts);
+    if (typeof obj.nickname === 'string') saveSettings({ nickname: obj.nickname });
     return obj.dreams.length;
   }
+  // 닉네임 저장 + 변경 알림(클라우드 동기화 트리거)
+  function setNickname(n) { saveSettings({ nickname: (n || '').trim() }); emitChange(); }
   function getSyncId() { return getSettings().syncId || ''; }
   function setSyncId(id) { return saveSettings({ syncId: id || '' }); }
   function getSyncStamp() { return getSettings().syncStamp || 0; }
@@ -359,6 +362,7 @@
     setSyncId: setSyncId,
     getSyncStamp: getSyncStamp,
     setSyncStamp: setSyncStamp,
+    setNickname: setNickname,
     onChange: onChange,
     getDreams: getDreams,
     getDream: getDream,
