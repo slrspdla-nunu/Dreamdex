@@ -52,6 +52,8 @@
     if (!host) {
       host = document.createElement('div');
       host.id = 'toastHost'; host.className = 'toast-host';
+      host.setAttribute('role', 'status');           // 스크린리더가 토스트를 읽도록
+      host.setAttribute('aria-live', 'polite');
       document.body.appendChild(host);
     }
     var t = document.createElement('div');
@@ -433,6 +435,8 @@
     }
     function restart() {
       if (_ddSlideTimer) clearInterval(_ddSlideTimer);
+      // 모션 최소화 설정이면 자동 전환 끔 (점으로 수동 이동은 가능)
+      if (global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       _ddSlideTimer = setInterval(function () {
         if (!document.body.contains(track)) { clearInterval(_ddSlideTimer); _ddSlideTimer = null; return; }
         showAt(i + 1);

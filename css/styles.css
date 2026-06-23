@@ -595,6 +595,15 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 6px;
 }
 
+/* 본문 바로가기 — 평소 숨김, 키보드 포커스 시 표시 */
+.skip-link {
+  position: fixed; top: 10px; left: 10px; z-index: 300;
+  background: var(--accent); color: var(--on-accent);
+  padding: 10px 16px; border-radius: 9px; font-weight: 600; font-size: 0.9rem;
+  transform: translateY(-160%); transition: transform 0.2s var(--ease);
+}
+.skip-link:focus { transform: translateY(0); }
+
 /* ====================== 레이아웃 ====================== */
 .app {
   position: relative;

@@ -257,6 +257,7 @@
       // 모바일 '탐험' 탭은 통계/지도 양쪽에서 활성화
       var active = route === seg || (route === 'explore' && (seg === 'stats' || seg === 'map'));
       el.classList.toggle('active', active);
+      if (active) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
     });
   }
 
@@ -476,6 +477,12 @@
     global.addEventListener('hashchange', render);
     initCursorTrail();
     initInstallPrompt();
+    var skip = document.getElementById('skipLink');
+    if (skip) skip.addEventListener('click', function (e) {
+      e.preventDefault(); // 해시 라우팅 깨지 않게 — 직접 포커스 이동
+      var m = document.getElementById('main');
+      if (m) { m.setAttribute('tabindex', '-1'); m.focus(); }
+    });
     render();
     initCloud();
   }
