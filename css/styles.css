@@ -1777,10 +1777,10 @@ button { font-family: inherit; cursor: pointer; }
      → 세로로 긴 창에서도 늘어나지 않고 바깥 위·아래 여백이 생김. flex가 margin-collapse도 방지.
      콘텐츠가 창보다 길면 safe center로 상단 잘림 방지(자연 스크롤). */
   #appShell { display: flex; flex-direction: column; justify-content: safe center; min-height: 100vh; }
-  /* 모든 화면의 패널(사이드바+메인)을 아카이브와 동일한 '고정 높이'로 통일
-     → 어느 페이지든 패널·사이드바 크기와 설정 위치가 그대로(들쭉날쭉 X). 세로로 긴 창에선 바깥 위·아래 여백.
-     콘텐츠가 길면 메인이 내부 스크롤(앱·웹 어디서나 동일). */
-  .app, .app.app-dashboard { height: min(calc(100vh - 40px), 900px); min-height: 0; overflow: hidden; }
+  /* 모든 화면의 패널(사이드바+메인)을 홈 페이지 기준 고정 높이로 통일(905px ≈ 홈이 스크롤 없이 딱 맞는 높이).
+     → 어느 페이지·앱/웹이든 main·사이드바 크기와 설정 위치가 동일하고, 홈은 PC 웹처럼 스크롤 없이 들어감.
+     세로로 긴 창에선 바깥 위·아래 여백, 내용 긴 페이지는 메인이 내부 스크롤. */
+  .app, .app.app-dashboard { height: 905px; min-height: 0; overflow: hidden; }
   .main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 }
 
