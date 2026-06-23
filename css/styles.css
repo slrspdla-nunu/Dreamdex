@@ -2237,8 +2237,10 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ====================== 가장 최근의 꿈 ↔ 추억 슬라이더 (대시보드) ====================== */
-.dd-feature-slider { position: relative; overflow: hidden; padding: 0; }
-.dd-feature-slider .dd-slides { display: flex; transition: transform 0.5s var(--ease); }
+/* 슬라이더(그리드 셀)가 옆 카드에 맞춰 늘어나도 슬라이드가 셀 높이를 꽉 채우게 →
+   배경 그라데이션이 카드 하단까지 이어짐(끊김 방지) */
+.dd-feature-slider { position: relative; overflow: hidden; padding: 0; display: flex; flex-direction: column; }
+.dd-feature-slider .dd-slides { display: flex; flex: 1 1 auto; transition: transform 0.5s var(--ease); }
 .dd-feature-slider .dd-slide { flex: 0 0 100%; min-width: 0; }
 .dd-slide-dots { position: absolute; z-index: 3; right: 16px; bottom: 12px; display: flex; gap: 6px; }
 .dd-dot {
