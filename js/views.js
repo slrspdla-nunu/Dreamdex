@@ -1577,11 +1577,23 @@
       } else { run(); }
     };
     document.getElementById('clearBtn').onclick = function () {
+      var loggedIn = !!(global.Cloud && global.Cloud.isReady() && global.Cloud.currentUser());
       confirmModal({
         title: '정말 전체 초기화할까요?', danger: true, confirm: '모두 삭제',
-        message: '모든 꿈 기록과 도감 진행이 사라지며 되돌릴 수 없습니다. 먼저 백업을 권장합니다.'
+        message: '모든 꿈 기록과 도감 진행이 사라지며 되돌릴 수 없습니다.' +
+          (loggedIn ? ' 로그인 중이라 클라우드와 연결된 다른 기기의 데이터도 함께 삭제됩니다.' : '') +
+          ' 먼저 백업을 권장합니다.'
       }).then(function (ok) {
-        if (ok) { Store.clearAll(); toast(tmsg('trash', '초기화되었습니다.')); setTimeout(function () { global.location.reload(); }, 500); }
+        if (!ok) return;
+        Store.clearAll();
+        function done() { toast(tmsg('trash', '초기화되었습니다.')); setTimeout(function () { global.location.reload(); }, 500); }
+        // 로그인 중이면 클라우드도 비워야 다시 안 내려받음 (clearAll 후라 페이로드가 비어있음)
+        if (loggedIn) {
+          var empty = Store.exportSyncData();
+          global.Cloud.push(empty).then(function () { Store.setSyncStamp(empty.updatedAt); }).then(done, done);
+        } else {
+          done();
+        }
       });
     };
     // 일기 잠금 PIN 관리 (PIN이 있을 때만 노출)
