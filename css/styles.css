@@ -1782,6 +1782,8 @@ button { font-family: inherit; cursor: pointer; }
      세로로 긴 창에선 바깥 위·아래 여백, 내용 긴 페이지는 메인이 내부 스크롤. */
   .app, .app.app-dashboard { height: 905px; min-height: 0; overflow: hidden; }
   .main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  /* 홈은 한 화면에 딱 맞는 쇼피스 → 스크롤바 없이(예전처럼) */
+  .main.main-dashboard { overflow: hidden; }
 }
 
 .app .sidebar {
