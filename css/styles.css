@@ -1571,6 +1571,9 @@ button { font-family: inherit; cursor: pointer; }
   .card.empty h3, .dd-empty h3 { font-size: 1.08rem; line-height: 1.4; }
   .card.empty p, .dd-empty p { font-size: 0.85rem; line-height: 1.55; }
   .card.empty .empty-art, .dd-empty .empty-art { margin-bottom: 12px; }
+  /* 빈 카드 버튼: 모바일에서도 양옆으로 나란히 (동일 너비) */
+  .empty-actions { flex-wrap: nowrap; gap: 8px; }
+  .empty-actions .btn { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; padding-left: 10px; padding-right: 10px; font-size: 0.86rem; }
 
   /* 상세 헤더: 모바일에선 세로로 쌓아 제목이 전체 폭을 쓰게(액션 버튼에 밀려 줄바꿈되던 문제) */
   .detail-head { flex-direction: column; gap: 18px; }
