@@ -170,7 +170,7 @@
     nodes.forEach(function (n) { idx[n.key] = n; });
 
     // 노드 반지름 (빈도 기반) — 충돌 패스에서도 쓰므로 시뮬레이션 앞에 정의
-    function radius(n) { return 6 + Math.min(n.weight, 8) * 2.4; }
+    function radius(n) { return 5 + Math.min(n.weight, 8) * 1.7; }
     var COLLIDE_PAD = 30; // 코어 사이 최소 간격 (덜 다닥다닥 붙게)
 
     // force 시뮬레이션

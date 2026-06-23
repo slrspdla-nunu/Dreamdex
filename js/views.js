@@ -14,6 +14,15 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+  // 검색어 하이라이트 — 이스케이프 후 일치 부분을 <mark>로 감쌈(대소문자 무시)
+  function hl(text, q) {
+    var s = esc(text);
+    q = (q || '').trim();
+    if (!q) return s;
+    var pat = esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try { return s.replace(new RegExp('(' + pat + ')', 'gi'), '<mark class="hl">$1</mark>'); }
+    catch (e) { return s; }
+  }
 
   function fmtDate(iso) {
     if (!iso) return '';
@@ -71,12 +80,48 @@
         esc(o.confirm || '확인') + '</button>' +
         '</div></div>';
       document.body.appendChild(host);
-      function close(v) { if (host.parentNode) host.parentNode.removeChild(host); resolve(v); }
+      function close(v) {
+        document.removeEventListener('keydown', onKey);
+        if (host.parentNode) host.parentNode.removeChild(host);
+        resolve(v);
+      }
+      function onKey(e) { if (e.key === 'Escape') close(false); }
+      document.addEventListener('keydown', onKey);
       host.addEventListener('click', function (e) {
         if (e.target === host) close(false);
         var act = e.target.getAttribute('data-act');
         if (act === 'ok') close(true);
         if (act === 'cancel') close(false);
+      });
+    });
+  }
+
+  // 임시보관 안내 모달 (3선택): 'save' | 'discard' | 'stay'
+  function draftPrompt() {
+    return new Promise(function (resolve) {
+      var host = document.createElement('div');
+      host.className = 'modal-host';
+      host.innerHTML =
+        '<div class="modal" role="dialog" aria-modal="true">' +
+        '<h3>작성 중인 꿈을 임시 보관할까요?</h3>' +
+        '<p>임시보관함에 저장하면 나중에 이어서 작성할 수 있어요.</p>' +
+        '<div class="modal-actions modal-actions-3">' +
+        '<button class="btn ghost" data-act="stay">계속 작성</button>' +
+        '<button class="btn ghost" data-act="discard">보관 안 함</button>' +
+        '<button class="btn primary" data-act="save">임시 보관</button>' +
+        '</div></div>';
+      document.body.appendChild(host);
+      function close(v) {
+        document.removeEventListener('keydown', onKey);
+        if (host.parentNode) host.parentNode.removeChild(host);
+        resolve(v);
+      }
+      function onKey(e) { if (e.key === 'Escape') close('stay'); }
+      document.addEventListener('keydown', onKey);
+      host.addEventListener('click', function (e) {
+        if (e.target === host) { close('stay'); return; }
+        var act = e.target.getAttribute('data-act');
+        if (act) close(act);
       });
     });
   }
@@ -89,22 +134,38 @@
       '<div class="modal share-sheet" role="dialog" aria-modal="true">' +
       '<h3>이 꿈 내보내기</h3>' +
       '<div class="share-opts">' +
+        (global.navigator && global.navigator.share
+          ? '<button class="btn" data-act="share">' + global.Icons.ui('arrow', { size: 16 }) + '<span>공유</span></button>' : '') +
         '<button class="btn" data-act="text">' + global.Icons.ui('archive', { size: 16 }) + '<span>텍스트 복사</span></button>' +
         '<button class="btn" data-act="image">' + global.Icons.ui('star', { size: 16 }) + '<span>이미지로 저장</span></button>' +
       '</div>' +
       '<div class="modal-actions"><button class="btn ghost" data-act="close">닫기</button></div>' +
       '</div>';
     document.body.appendChild(host);
-    function close() { if (host.parentNode) host.parentNode.removeChild(host); }
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      if (host.parentNode) host.parentNode.removeChild(host);
+    }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
     host.addEventListener('click', function (e) {
       if (e.target === host) { close(); return; }
       var btn = e.target.closest('[data-act]');
       if (!btn) return;
       var act = btn.getAttribute('data-act');
       if (act === 'close') { close(); }
+      else if (act === 'share') { nativeShareDream(dream); close(); }
       else if (act === 'text') { copyDreamText(dream); close(); }
       else if (act === 'image') { saveDreamImage(dream); close(); }
     });
+  }
+
+  // 네이티브 공유 (모바일) — 텍스트 공유. 사용자 제스처 안에서 동기 호출(이미지 비동기 생성은 제스처가 끊겨 실패할 수 있어 제외).
+  function nativeShareDream(dream) {
+    var nav = global.navigator;
+    if (!nav || !nav.share) return;
+    nav.share({ title: dream.title || '꿈', text: global.Share.toText(dream) })
+      .catch(function (err) { if (err && err.name !== 'AbortError') toast(tmsg('warn', '공유하지 못했어요.')); });
   }
 
   function copyDreamText(dream) {
@@ -175,7 +236,7 @@
       '<div class="big-logo">' + global.Icons.logo(40) + '</div>' +
       '<h1>Dreamdex</h1>' +
       '<div class="quote">"꿈은 사라지는 기록이 아니라, 수집 가능한 데이터이다."</div>' +
-      '<p>당신의 무의식을 기록하면 꿈 속 장소·인물·상황이 자동으로 분류되어<br>나만의 도감으로 채워집니다.</p>' +
+      '<p>당신의 무의식을 기록하면 꿈 속 장소·인물·상황이 자동으로 분류되어 나만의 도감으로 채워집니다.</p>' +
       '<div class="field" style="text-align:left">' +
       '<label for="nick">어떻게 불러드릴까요? <span style="color:var(--text-faint)">(선택)</span></label>' +
       '<input id="nick" class="input" placeholder="닉네임" maxlength="20">' +
@@ -239,18 +300,33 @@
     var sorted = dreams.slice().sort(byNewest);
     var feat = sorted[0];
     var rest = sorted.slice(1, 5);
-    var featExcerpt = (feat.content || '').slice(0, 200);
-    var featEmo = Store.emotionById(feat.emotion) || {};
-    var featHtml =
-      '<article class="dd-panel dd-feature" data-dream-id="' + feat.id + '">' +
+    // 슬라이드 1장 빌더 (가장 최근의 꿈 / 추억) — 기존 dd-feature 레이아웃 재사용
+    function featSlide(d, label) {
+      var emo = Store.emotionById(d.emotion) || {};
+      var hidden = isHidden(d);
+      var ex = hidden ? 'PIN을 입력하면 볼 수 있어요' : (d.content || '').slice(0, 200);
+      return '<div class="dd-slide dd-feature" data-dream-id="' + d.id + '">' +
         '<div class="dd-feature-copy">' +
-          '<div class="dd-panel-title">' + global.Icons.ui('spark', { size: 15 }) + '<span>가장 최근의 꿈</span></div>' +
-          '<h2>' + esc(feat.title) + '</h2>' +
-          '<p>' + esc(featExcerpt) + (feat.content.length > 200 ? '…' : '') + '</p>' +
-          (kwChipsHtml(feat.keywords, dex.unlock, false) || '') +
-          '<div class="dd-feature-meta">' + fmtDate(feat.date) + ' · ' + esc(featEmo.label || '') + '</div>' +
+          '<div class="dd-panel-title">' + global.Icons.ui(hidden ? 'lock' : 'spark', { size: 15 }) + '<span>' + esc(label) + '</span></div>' +
+          '<h2>' + (hidden ? '잠긴 꿈' : esc(d.title)) + '</h2>' +
+          '<p>' + esc(ex) + (!hidden && d.content.length > 200 ? '…' : '') + '</p>' +
+          (hidden ? '' : (kwChipsHtml(d.keywords, dex.unlock, false) || '')) +
+          '<div class="dd-feature-meta">' + fmtDate(d.date) + (hidden ? '' : ' · ' + esc(emo.label || '')) + '</div>' +
         '</div>' +
         '<div class="dd-feature-art" aria-hidden="true">' + global.Icons.dreamScene() + '</div>' +
+      '</div>';
+    }
+    var slides = [featSlide(feat, '가장 최근의 꿈')];
+    var mem = memoryDream(dreams);
+    if (mem && mem.dream.id !== feat.id) slides.push(featSlide(mem.dream, mem.label));
+    var dots = slides.length > 1
+      ? '<div class="dd-slide-dots" id="ddDots">' + slides.map(function (_, i) {
+          return '<button class="dd-dot' + (i === 0 ? ' active' : '') + '" data-slide="' + i + '" aria-label="슬라이드 ' + (i + 1) + '"></button>';
+        }).join('') + '</div>'
+      : '';
+    var featHtml =
+      '<article class="dd-panel dd-feature-slider">' +
+        '<div class="dd-slides" id="ddSlides">' + slides.join('') + '</div>' + dots +
       '</article>';
 
     var restHtml = rest.length
@@ -320,20 +396,73 @@
 
     var mb = document.getElementById('moreBtn');
     if (mb) mb.onclick = function () { go('/dreams'); };
+    setupFeatureSlider();
+  }
+
+  // 가장 최근의 꿈 ↔ 추억 자동 슬라이드 (몇 초마다 전환)
+  var _ddSlideTimer = null;
+  function setupFeatureSlider() {
+    if (_ddSlideTimer) { clearInterval(_ddSlideTimer); _ddSlideTimer = null; }
+    var track = document.getElementById('ddSlides');
+    if (!track) return;
+    var n = track.children.length;
+    if (n < 2) return;
+    var dotsWrap = document.getElementById('ddDots');
+    var i = 0;
+    function showAt(k) {
+      i = (k + n) % n;
+      track.style.transform = 'translateX(' + (-i * 100) + '%)';
+      if (dotsWrap) Array.prototype.forEach.call(dotsWrap.children, function (d, j) { d.classList.toggle('active', j === i); });
+    }
+    function restart() {
+      if (_ddSlideTimer) clearInterval(_ddSlideTimer);
+      _ddSlideTimer = setInterval(function () {
+        if (!document.body.contains(track)) { clearInterval(_ddSlideTimer); _ddSlideTimer = null; return; }
+        showAt(i + 1);
+      }, 5000);
+    }
+    if (dotsWrap) dotsWrap.addEventListener('click', function (e) {
+      var dot = e.target.closest('[data-slide]');
+      if (dot) { e.stopPropagation(); showAt(+dot.getAttribute('data-slide')); restart(); }
+    });
+    restart();
   }
 
   // 대시보드 압축 행
   function compactRow(d) {
     var e = Store.emotionById(d.emotion) || {};
+    var hidden = isHidden(d);
     return '<button class="recent-row" data-dream-id="' + d.id + '">' +
-      '<span class="rr-thumb" style="--thumb-color:' + (e.color || '#9180e8') + '"></span>' +
-      '<span class="rr-main"><span class="rr-title">' + esc(d.title) + '</span>' +
-      '<span class="rr-emotion" style="color:' + (e.color || '#9180e8') + '">' + esc(e.label || '') + '</span></span>' +
+      '<span class="rr-thumb" style="--thumb-color:' + (e.color || '#9180e8') + '">' +
+        (hidden ? global.Icons.ui('lock', { size: 15 }) : global.Icons.emotion(d.emotion, 16)) + '</span>' +
+      '<span class="rr-main"><span class="rr-title">' + (hidden ? '잠긴 꿈' : esc(d.title)) + '</span>' +
+      '<span class="rr-emotion" style="color:' + (e.color || '#9180e8') + '">' + (hidden ? '' : esc(e.label || '')) + '</span></span>' +
       '<span class="rr-date">' + fmtShort(d.date) + '</span>' +
       '<span class="rr-arrow">' + global.Icons.ui('arrow', { size: 14 }) + '</span>' +
       '</button>';
   }
 
+  // 추억 다시보기 — 과거 꿈 하나를 결정적으로 골라 재등장
+  function memoryDream(dreams) {
+    if (dreams.length < 4) return null;
+    var today = new Date();
+    var y = today.getFullYear();
+    var mmdd = pad2(today.getMonth() + 1) + '-' + pad2(today.getDate());
+    // 후보1: 같은 월·일의 과거 연도 꿈("N년 전 오늘")
+    var anniv = dreams.filter(function (d) {
+      return (d.date || '').slice(5, 10) === mmdd && (d.date || '').slice(0, 4) < String(y);
+    }).sort(byNewest);
+    if (anniv.length) {
+      return { dream: anniv[0], label: (y - +anniv[0].date.slice(0, 4)) + '년 전 오늘' };
+    }
+    // 후보2: 21일 이상 지난 꿈 중 오늘 날짜 기반 결정적 선택
+    var cutoff = new Date(today); cutoff.setDate(today.getDate() - 21);
+    var cutIso = cutoff.toISOString().slice(0, 10);
+    var old = dreams.filter(function (d) { return (d.date || '') <= cutIso; }).sort(byNewest);
+    if (!old.length) return null;
+    var doy = Math.floor((today - new Date(y, 0, 0)) / 86400000);
+    return { dream: old[doy % old.length], label: '이런 꿈도 꿨어요' };
+  }
   function dashboardEmotionBars(stats) {
     var max = 1;
     Store.EMOTIONS.forEach(function (e) {
@@ -364,8 +493,14 @@
   /* ============================ 작성/수정 ============================ */
   function form(c, params) {
     var editing = params && params.id ? Store.getDream(params.id) : null;
+    var draftId = (params && params.draftId) || null;
+    var loadedDraft = draftId ? Store.getDraft(draftId) : null;
     var today = new Date().toISOString().slice(0, 10);
-    var d = editing || { title: '', date: today, content: '', emotion: '' };
+    var d = editing || loadedDraft || { title: '', date: today, content: '', emotion: '' };
+    var currentDraftId = loadedDraft ? loadedDraft.id : null;
+    var routePath = (global.location.hash || '').replace(/^#/, '') || '/';
+    var draftCount = Store.getDrafts().length;
+    var locked = !!d.locked;
 
     var chips = Store.EMOTIONS.map(function (e) {
       var sel = d.emotion === e.id ? ' selected' : '';
@@ -374,22 +509,40 @@
         global.Icons.emotion(e.id, 16) + e.label + '</button>';
     }).join('');
 
-    c.innerHTML = head(editing ? '꿈 수정' : '꿈 기록', '기억이 흐려지기 전에 남겨두세요.') +
+    c.innerHTML =
+      '<div class="form-head-row">' +
+        head(editing ? '꿈 수정' : '꿈 기록', '기억이 흐려지기 전에 남겨두세요.') +
+        (editing ? '' :
+          '<button type="button" class="btn ghost drafts-link" id="draftsBtn" aria-label="임시보관함">' +
+            global.Icons.ui('archive', { size: 15 }) + '<span class="drafts-label">임시보관함</span>' +
+            (draftCount ? '<span class="draft-count">' + draftCount + '</span>' : '') + '</button>') +
+      '</div>' +
       '<div class="card view-enter" style="padding:28px;max-width:760px">' +
       '<form id="dreamForm">' +
         '<div class="field"><label for="f-title">제목</label>' +
           '<input id="f-title" class="input" maxlength="60" placeholder="꿈에 제목을 붙인다면?" value="' + esc(d.title) + '"></div>' +
-        '<div class="field" style="max-width:240px"><label for="f-date">날짜</label>' +
-          '<input id="f-date" type="date" class="input" value="' + esc(d.date) + '"></div>' +
+        '<div class="field" style="max-width:240px"><label>날짜</label>' +
+          '<div class="cal-toggle-wrap date-field" id="dateWrap">' +
+            '<button type="button" class="input date-input" id="dateBtn">' +
+              '<span id="dateLabel"></span>' + global.Icons.ui('calendar', { size: 16 }) +
+            '</button>' +
+            '<div class="cal cal-pop date-pop" id="dateCal" hidden></div>' +
+          '</div>' +
+          '<input type="hidden" id="f-date" value="' + esc(d.date) + '"></div>' +
         '<div class="field"><label>감정 <span style="color:var(--text-faint)">(하나 선택)</span></label>' +
           '<div class="emotion-row" id="emoRow">' + chips + '</div></div>' +
         '<div class="field"><label for="f-content">꿈 내용</label>' +
-          '<textarea id="f-content" class="textarea" maxlength="4000" placeholder="꿈에서 본 장소, 만난 사람, 일어난 일을 자유롭게 적어보세요. 자세할수록 더 많은 키워드가 수집됩니다.">' + esc(d.content) + '</textarea>' +
-          '<div class="form-hint">' + global.Icons.ui('spark', { size: 13 }) + '<span>저장하면 내용 속 장소·인물·상황이 자동으로 도감에 등록됩니다.</span>' +
-          '<span class="char-count" id="charCount">0자</span></div></div>' +
-        '<div style="display:flex;gap:10px;margin-top:8px">' +
+          '<div class="textarea-wrap">' +
+            '<textarea id="f-content" class="textarea" maxlength="4000" placeholder="꿈에서 본 장소, 만난 사람, 일어난 일을 자유롭게 적어보세요. 자세할수록 더 많은 키워드가 수집됩니다.">' + esc(d.content) + '</textarea>' +
+            '<span class="char-count" id="charCount">0자</span>' +
+          '</div>' +
+          '<div class="form-hint">' + global.Icons.ui('spark', { size: 13 }) + '<span>저장하면 내용 속 장소·인물·상황이 자동으로 도감에 등록됩니다.</span></div></div>' +
+        '<div class="form-actions">' +
           '<button type="submit" class="btn primary" id="submitBtn">' + (editing ? '수정 저장' : '기록하고 수집하기') + '</button>' +
           '<button type="button" class="btn ghost" id="cancelBtn">취소</button>' +
+          '<button type="button" class="btn ghost lock-toggle' + (locked ? ' on' : '') + '" id="lockBtn" style="margin-left:auto" aria-pressed="' + locked + '">' +
+            '<span class="lb-ic">' + global.Icons.ui(locked ? 'lock' : 'lockOpen', { size: 15 }) + '</span>' +
+            '<span class="lb-tx">' + (locked ? '잠금됨' : '잠금') + '</span></button>' +
         '</div>' +
       '</form></div>';
 
@@ -436,16 +589,122 @@
       selectEmo(chips[next]);
     });
 
-    // 작성 중 이탈 경고 — 초기 스냅샷과 비교
+    // 날짜 — 아카이브와 동일한 월간 달력 팝업 (네이티브 date 입력 대체)
+    var dateCal = document.getElementById('dateCal');
+    var dateBtn = document.getElementById('dateBtn');
+    var dateLabel = document.getElementById('dateLabel');
+    var dateCalMonth = (dateEl.value || today).slice(0, 7);
+    function fmtDateLabel(iso) {
+      var p = (iso || '').split('-');
+      return p.length === 3 ? (+p[0] + '년 ' + (+p[1]) + '월 ' + (+p[2]) + '일') : '날짜 선택';
+    }
+    function setDateLabel() { dateLabel.textContent = fmtDateLabel(dateEl.value); }
+    function renderDateCal() {
+      var ym = dateCalMonth, year = +ym.slice(0, 4), mon = +ym.slice(5, 7);
+      var startDow = new Date(year, mon - 1, 1).getDay();
+      var dim = new Date(year, mon, 0).getDate();
+      var WD = ['일', '월', '화', '수', '목', '금', '토'];
+      var hdr = '<div class="cal-head">' +
+        '<button type="button" class="cal-nav" data-cal-nav="prev" aria-label="이전 달">‹</button>' +
+        '<span class="cal-title cal-title-static">' + esc(monthLabel(ym)) + '</span>' +
+        '<button type="button" class="cal-nav" data-cal-nav="next" aria-label="다음 달">›</button>' +
+        '</div>';
+      var wd = '<div class="cal-grid cal-wd">' + WD.map(function (w) { return '<span class="cal-wcell">' + w + '</span>'; }).join('') + '</div>';
+      var cells = '';
+      for (var i = 0; i < startDow; i++) cells += '<span class="cal-cell blank"></span>';
+      for (var dd = 1; dd <= dim; dd++) {
+        var iso = ym + '-' + pad2(dd);
+        var cls = 'cal-cell has' + (dateEl.value === iso ? ' selected' : '') + (iso === today ? ' today' : '');
+        cells += '<button type="button" class="' + cls + '" data-pick="' + iso + '">' + dd + '</button>';
+      }
+      for (var t = startDow + dim; t < 42; t++) cells += '<span class="cal-cell blank"></span>';
+      dateCal.innerHTML = hdr + wd + '<div class="cal-grid cal-days">' + cells + '</div>';
+    }
+    function openDateCal(open) {
+      dateCal.hidden = !open;
+      dateBtn.classList.toggle('open', open);
+      if (open) { dateCalMonth = (dateEl.value || today).slice(0, 7); renderDateCal(); }
+    }
+    dateBtn.addEventListener('click', function (e) { e.stopPropagation(); openDateCal(dateCal.hidden); });
+    dateCal.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var nav = e.target.closest('[data-cal-nav]');
+      if (nav) {
+        var y = +dateCalMonth.slice(0, 4), mo = +dateCalMonth.slice(5, 7);
+        mo += (nav.getAttribute('data-cal-nav') === 'next' ? 1 : -1);
+        if (mo < 1) { mo = 12; y--; } else if (mo > 12) { mo = 1; y++; }
+        dateCalMonth = y + '-' + pad2(mo); renderDateCal(); return;
+      }
+      var pick = e.target.closest('[data-pick]');
+      if (pick) {
+        dateEl.value = pick.getAttribute('data-pick');
+        setDateLabel(); renderDateCal(); openDateCal(false); refresh();
+      }
+    });
+    if (_calOutside) document.removeEventListener('click', _calOutside);
+    _calOutside = function (e) {
+      if (!dateCal.hidden && !e.target.closest('#dateWrap')) openDateCal(false);
+    };
+    document.addEventListener('click', _calOutside);
+    setDateLabel();
+
+    // 작성 중 이탈 가드 — 초기 스냅샷과 비교
     var snap = JSON.stringify({ t: d.title, c: d.content, dt: d.date, e: d.emotion });
     function isDirty() {
       return JSON.stringify({ t: titleEl.value, c: contentEl.value, dt: dateEl.value, e: selectedEmo }) !== snap;
     }
+    function saveCurrentDraft() {
+      var saved = Store.saveDraft({
+        title: titleEl.value, content: contentEl.value, date: dateEl.value || today, emotion: selectedEmo
+      }, currentDraftId);
+      currentDraftId = saved.id;
+      return saved;
+    }
+    // 폼을 벗어나려 할 때(취소/다른 페이지 이동) 호출 → 나가도 되면 resolve(true)
+    function leaveCheck() {
+      return new Promise(function (resolve) {
+        if (editing) {
+          // 기존 꿈 수정 중 — 임시보관 대상 아님(변경 있을 때만 단순 경고)
+          if (!isDirty()) { resolve(true); return; }
+          confirmModal({ title: '수정을 그만둘까요?', message: '변경한 내용은 저장되지 않습니다.', confirm: '나가기', danger: true })
+            .then(function (ok) { resolve(!!ok); });
+          return;
+        }
+        // 임시보관본을 열어본 경우엔 변경이 없어도 매번 묻는다(보관 유지/삭제 결정).
+        // 새 작성은 입력이 있을 때(dirty)만 묻는다.
+        if (!loadedDraft && !isDirty()) { resolve(true); return; }
+        draftPrompt().then(function (act) {
+          if (act === 'save') { saveCurrentDraft(); toast(tmsg('check', '임시보관함에 저장했어요.')); resolve(true); }
+          else if (act === 'discard') {
+            if (currentDraftId) { Store.deleteDraft(currentDraftId); toast(tmsg('trash', '임시보관함에서 제거했어요.')); }
+            resolve(true);
+          }
+          else resolve(false);
+        });
+      });
+    }
+    global.setLeaveGuard(routePath, function () { return leaveCheck(); });
+
     document.getElementById('cancelBtn').onclick = function () {
-      var dest = editing ? '/dreams/' + editing.id : '/';
-      if (!isDirty()) { go(dest); return; }
-      confirmModal({ title: '작성을 그만둘까요?', message: '작성 중인 내용은 저장되지 않고 사라집니다.', confirm: '나가기', danger: true })
-        .then(function (ok) { if (ok) go(dest); });
+      go(editing ? '/dreams/' + editing.id : '/'); // 가드가 임시보관 안내 처리
+    };
+    var draftsBtn = document.getElementById('draftsBtn');
+    if (draftsBtn) draftsBtn.onclick = function () { go('/drafts'); };
+
+    // 이 꿈 잠금 토글 (잠긴 꿈은 PIN으로만 열람)
+    var lockBtn = document.getElementById('lockBtn');
+    function paintLock() {
+      lockBtn.classList.toggle('on', locked);
+      lockBtn.setAttribute('aria-pressed', locked);
+      lockBtn.querySelector('.lb-ic').innerHTML = global.Icons.ui(locked ? 'lock' : 'lockOpen', { size: 15 });
+      lockBtn.querySelector('.lb-tx').textContent = locked ? '잠금됨' : '잠금';
+    }
+    lockBtn.onclick = function () {
+      if (locked) { locked = false; paintLock(); return; }
+      if (!global.Lock.hasPin()) {
+        // 앱 PIN이 없으면 먼저 설정해야 잠금이 의미가 있음
+        global.Lock.setPin(function (saved) { if (saved) { locked = true; paintLock(); toast(tmsg('check', '이 꿈을 잠갔어요.')); } });
+      } else { locked = true; paintLock(); }
     };
 
     // Ctrl/⌘+Enter 저장
@@ -463,8 +722,11 @@
       if (!content) { toast(tmsg('warn', '꿈 내용을 입력해주세요.')); return; }
       if (!selectedEmo) { toast(tmsg('warn', '감정을 하나 선택해주세요.')); return; }
 
-      var payload = { title: title, content: content, date: date, emotion: selectedEmo };
+      var payload = { title: title, content: content, date: date, emotion: selectedEmo, locked: locked };
       payload.keywords = Classify.classifyDream(payload);
+
+      global.clearLeaveGuard();                               // 정상 저장 → 가드 해제
+      if (currentDraftId) Store.deleteDraft(currentDraftId);  // 임시보관본은 기록되면 제거
 
       if (editing) {
         Store.updateDream(editing.id, payload);
@@ -497,9 +759,55 @@
     }
   }
 
+  /* ============================ 임시보관함 ============================ */
+  function drafts(c) {
+    var list = Store.getDrafts().slice().sort(function (a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+    var body;
+    if (!list.length) {
+      body = emptyCard('archive', '임시보관함이 비어 있어요',
+        '꿈을 기록하다 멈추면 여기에 임시 저장해 두고 나중에 이어서 쓸 수 있어요.', '꿈 기록하기', '/new');
+    } else {
+      body = '<div style="margin:0 0 16px"><button class="btn primary sm" data-go="/new">' +
+          global.Icons.ui('plus', { size: 14 }) + '새 꿈 기록</button></div>' +
+        '<div class="draft-list">' + list.map(function (df) {
+        var excerpt = (df.content || '').replace(/\s+/g, ' ').trim();
+        return '<div class="draft-item">' +
+          '<button type="button" class="draft-open" data-open="' + df.id + '">' +
+            '<div class="draft-head">' +
+              '<span class="draft-title">' + esc(df.title || '제목 없는 꿈') + '</span>' +
+              (df.emotion ? emotionBadge(df.emotion) : '') +
+            '</div>' +
+            '<p class="draft-excerpt' + (excerpt ? '' : ' is-empty') + '">' +
+              (excerpt ? esc(excerpt.slice(0, 140)) : '아직 내용이 없어요') + '</p>' +
+            '<div class="draft-meta">' + global.Icons.ui('calendar', { size: 12 }) + esc(fmtDate(df.date)) +
+              ' · 임시 저장됨</div>' +
+          '</button>' +
+          '<button type="button" class="draft-del" data-del="' + df.id + '" aria-label="삭제">' +
+            global.Icons.ui('trash', { size: 16 }) + '</button>' +
+        '</div>';
+      }).join('') + '</div>';
+    }
+    c.innerHTML = head('임시보관함', '작성하다 멈춘 꿈을 이어서 기록하세요.') +
+      '<div class="view-enter">' + body + '</div>';
+
+    var listEl = c.querySelector('.draft-list');
+    if (listEl) listEl.addEventListener('click', function (e) {
+      var del = e.target.closest('[data-del]');
+      if (del) {
+        e.stopPropagation();
+        var id = del.getAttribute('data-del');
+        confirmModal({ title: '임시보관본을 삭제할까요?', message: '이 임시 저장본은 영구히 사라집니다.', confirm: '삭제', danger: true })
+          .then(function (ok) { if (ok) { Store.deleteDraft(id); toast(tmsg('trash', '임시보관본을 삭제했어요.')); drafts(c); } });
+        return;
+      }
+      var open = e.target.closest('[data-open]');
+      if (open) go('/draft/' + open.getAttribute('data-open'));
+    });
+  }
+
   /* ============================ 목록 ============================ */
   var LIST_PAGE = 15;
-  var listState = { q: '', emotion: 'all', fav: false, day: null, month: null, calMonth: null, shown: LIST_PAGE };
+  var listState = { q: '', emotion: 'all', fav: false, day: null, month: null, kw: null, calMonth: null, shown: LIST_PAGE };
   var _calOutside = null; // 달력 팝업 바깥클릭 닫기 핸들러(중복 방지용)
 
   function monthLabel(iso) {
@@ -513,6 +821,7 @@
     listState.shown = LIST_PAGE; // 아카이브를 다시 열면 처음부터
     listState.day = null;        // 날짜 선택 해제
     listState.month = null;      // 월 선택 해제
+    listState.kw = null;         // 키워드 필터 해제
     // 달력 시작 월 = 가장 최근 꿈의 월 (없으면 이번 달)
     var latestDream = Store.getDreams().slice().sort(byNewest)[0];
     listState.calMonth = latestDream ? (latestDream.date || '').slice(0, 7) : new Date().toISOString().slice(0, 7);
@@ -521,7 +830,8 @@
       '" data-emo="all">전체</button>' +
       Store.EMOTIONS.map(function (e) {
         return '<button class="fchip' + (listState.emotion === e.id ? ' active' : '') +
-          '" data-emo="' + e.id + '">' + global.Icons.emotion(e.id, 14) + e.label + '</button>';
+          '" data-emo="' + e.id + '" style="--em-color:' + e.color + '">' +
+          global.Icons.emotion(e.id, 16) + e.label + '</button>';
       }).join('');
 
     c.innerHTML = head('아카이브', '수집한 꿈을 검색하고 되짚어보세요.') +
@@ -544,21 +854,31 @@
     function renderResult() {
       var dreams = Store.getDreams().slice().sort(byNewest);
       var q = listState.q.trim().toLowerCase();
+      var kwc = null, kwid = null;
+      if (listState.kw) { var kp = listState.kw.split(':'); kwc = kp[0]; kwid = kp[1]; }
       var filtered = dreams.filter(function (d) {
         if (listState.fav && !d.favorite) return false;
         if (listState.emotion !== 'all' && d.emotion !== listState.emotion) return false;
         if (listState.day && d.date !== listState.day) return false;
         if (listState.month && (d.date || '').slice(0, 7) !== listState.month) return false;
+        if (listState.kw && ((d.keywords && d.keywords[kwc]) || []).indexOf(kwid) === -1) return false;
         if (q && (d.title + ' ' + d.content).toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
       var host = document.getElementById('listResult');
+      // 활성 키워드 필터 칩 (✕로 해제)
+      var activeFilter = '';
+      if (listState.kw) {
+        var it = Classify.findItem(kwc, kwid);
+        activeFilter = '<div class="active-filter"><span class="af-chip cat-' + kwc + '" role="button" tabindex="0">' +
+          DICT[kwc].label + ' · ' + esc(it ? it.name : kwid) + ' <span class="af-x">✕</span></span></div>';
+      }
       if (!dreams.length) {
         host.innerHTML = emptyCard('archive', '아직 기록한 꿈이 없습니다', '첫 꿈을 기록하면 이곳에 카드로 쌓입니다.', '＋ 꿈 기록하기', '/new');
         return;
       }
       if (!filtered.length) {
-        host.innerHTML = emptyCard('search', '검색 결과가 없습니다', '다른 검색어나 필터를 시도해보세요.');
+        host.innerHTML = activeFilter + emptyCard('search', '검색 결과가 없습니다', '다른 검색어나 필터를 시도해보세요.');
         return;
       }
       // 점진 로드: 앞에서 shown개만
@@ -573,19 +893,27 @@
       var html = groups.map(function (g) {
         return '<div class="month-head"><span class="mh-label">' + esc(g.label) + '</span>' +
           '<span class="mh-count">' + g.items.length + '</span></div>' +
-          '<div class="dream-grid">' + g.items.map(function (d) { return dreamCard(d, unlock); }).join('') + '</div>';
+          '<div class="dream-grid">' + g.items.map(function (d) { return dreamCard(d, unlock, true, listState.q); }).join('') + '</div>';
       }).join('');
       var remaining = filtered.length - visible.length;
       if (remaining > 0) {
         html += '<div class="load-more-wrap"><button class="btn ghost" id="loadMoreBtn">더 보기 ' +
           '<span class="lm-n">' + remaining + '개</span></button></div>';
       }
-      host.innerHTML = html;
+      host.innerHTML = activeFilter + html;
       var lm = document.getElementById('loadMoreBtn');
       if (lm) lm.onclick = function () { listState.shown += LIST_PAGE; renderResult(); };
     }
     // 위임 바인딩은 한 번만 (host 엘리먼트는 재사용, innerHTML 만 교체됨)
     bindDreamCards(document.getElementById('listResult'));
+
+    // 아카이브 전용: 카드 키워드 칩 클릭 → 해당 키워드로 필터(전역 '도감 이동' 위임 가로채기)
+    document.getElementById('listResult').addEventListener('click', function (e) {
+      var clear = e.target.closest('.af-chip');
+      if (clear && this.contains(clear)) { e.stopPropagation(); listState.kw = null; listState.shown = LIST_PAGE; renderResult(); return; }
+      var chip = e.target.closest('[data-kw]');
+      if (chip && this.contains(chip)) { e.stopPropagation(); listState.kw = chip.getAttribute('data-kw'); listState.shown = LIST_PAGE; renderResult(); }
+    });
 
     var si = document.getElementById('searchInput');
     si.addEventListener('input', function () { listState.q = si.value; listState.shown = LIST_PAGE; renderResult(); });
@@ -696,6 +1024,22 @@
   function detail(c, params) {
     var d = Store.getDream(params.id);
     if (!d) { c.innerHTML = emptyCard('error', '꿈을 찾을 수 없습니다', '삭제되었거나 잘못된 주소입니다.', '아카이브로', '/dreams'); return; }
+    // 잠긴 꿈 — PIN 해제 전에는 내용 비공개
+    if (isHidden(d)) {
+      c.innerHTML =
+        '<button class="btn sm ghost" id="backBtn" style="margin-bottom:18px">← 아카이브</button>' +
+        '<div class="card view-enter locked-detail">' +
+          '<div class="ld-icon">' + global.Icons.ui('lock', { size: 30 }) + '</div>' +
+          '<h2>잠긴 꿈입니다</h2>' +
+          '<p>이 꿈은 잠겨 있어요. PIN을 입력하면 볼 수 있습니다.</p>' +
+          '<button class="btn primary" id="unlockBtn">PIN 입력하고 열기</button>' +
+        '</div>';
+      document.getElementById('backBtn').onclick = function () { go('/dreams'); };
+      document.getElementById('unlockBtn').onclick = function () {
+        global.Lock.requirePin(function () { detail(c, params); });
+      };
+      return;
+    }
     var dreams = Store.getDreams();
     var unlock = Classify.unlockState(dreams.length);
     var kw = kwChipsHtml(d.keywords, unlock, true, null, true);
@@ -828,7 +1172,11 @@
           '<div class="ds-body"><div class="ds-name">???</div>' +
           '<div class="ds-count">' + (locked ? tierHint(s.tier) : '미발견') + '</div></div></div>';
       }).join('') + '</div>';
-      document.getElementById('dexGrid').innerHTML = html;
+      var host = document.getElementById('dexGrid');
+      host.innerHTML = html;
+      // 탭 전환마다 진입 애니메이션 재생 (innerHTML 교체만으론 같은 애니메이션이 재시작되지 않음)
+      var g = host.firstElementChild;
+      if (g) { g.style.animation = 'none'; void g.offsetWidth; g.style.animation = ''; }
     }
 
     document.getElementById('dexTabs').addEventListener('click', function (e) {
@@ -890,6 +1238,72 @@
   }
 
   /* ============================ 통계 ============================ */
+  // 꿈 결산 — 올해(없으면 전체) 기준 요약 집계
+  function dreamRecap(dreams) {
+    if (!dreams.length) return null;
+    var y = new Date().getFullYear();
+    var ofYear = dreams.filter(function (d) { return (d.date || '').slice(0, 4) === String(y); });
+    var pool = ofYear.length ? ofYear : dreams;
+    var emoCount = {}; pool.forEach(function (d) { emoCount[d.emotion] = (emoCount[d.emotion] || 0) + 1; });
+    var topEmo = null, topEmoN = 0;
+    Object.keys(emoCount).forEach(function (k) { if (emoCount[k] > topEmoN) { topEmoN = emoCount[k]; topEmo = k; } });
+    var placeCount = {}; pool.forEach(function (d) { ((d.keywords && d.keywords.place) || []).forEach(function (id) { placeCount[id] = (placeCount[id] || 0) + 1; }); });
+    var topPlace = null, topPlaceN = 0;
+    Object.keys(placeCount).forEach(function (k) { if (placeCount[k] > topPlaceN) { topPlaceN = placeCount[k]; topPlace = k; } });
+    var topPlaceItem = topPlace ? Classify.findItem('place', topPlace) : null;
+    var monthCount = {}; pool.forEach(function (d) { var m = (d.date || '').slice(0, 7); if (m) monthCount[m] = (monthCount[m] || 0) + 1; });
+    var topMonth = null, topMonthN = 0;
+    Object.keys(monthCount).forEach(function (k) { if (monthCount[k] > topMonthN) { topMonthN = monthCount[k]; topMonth = k; } });
+    // 최장 연속 기록(전체 날짜 기준)
+    var days = {}; dreams.forEach(function (d) { var day = (d.date || '').slice(0, 10); if (day) days[day] = true; });
+    var sorted = Object.keys(days).sort();
+    var longest = 0, run = 0, prev = null;
+    sorted.forEach(function (day) {
+      run = (prev && Math.round((new Date(day) - new Date(prev)) / 86400000) === 1) ? run + 1 : 1;
+      if (run > longest) longest = run; prev = day;
+    });
+    return {
+      title: ofYear.length ? (y + ' 나의 꿈') : '나의 꿈 결산',
+      count: pool.length, topEmo: topEmo,
+      topPlaceName: topPlaceItem ? topPlaceItem.name : null,
+      topMonth: topMonth, longest: longest
+    };
+  }
+  // 결산 내용(헤드 + 그리드) — 팝업에서 사용
+  function recapInnerHtml(r) {
+    var emo = r.topEmo ? Store.emotionById(r.topEmo) : null;
+    function item(label, value, color) {
+      return '<div class="recap-item"><div class="recap-val"' + (color ? ' style="color:' + color + '"' : '') + '>' + value + '</div>' +
+        '<div class="recap-label">' + esc(label) + '</div></div>';
+    }
+    return '<div class="recap-head">' + global.Icons.ui('spark', { size: 18 }) + '<span>' + esc(r.title) + '</span></div>' +
+      '<div class="recap-grid">' +
+        item('기록한 꿈', r.count + '<small>개</small>', 'var(--accent)') +
+        item('가장 많은 감정', emo ? esc(emo.label) : '-', emo ? emo.color : '') +
+        item('가장 자주 간 곳', r.topPlaceName ? esc(r.topPlaceName) : '-', 'var(--cat-place)') +
+        item('가장 많이 꾼 달', r.topMonth ? (Number(r.topMonth.slice(5, 7)) + '월') : '-', 'var(--accent-2)') +
+        item('최장 연속 기록', r.longest + '<small>일</small>', r.longest > 1 ? 'var(--accent)' : '') +
+      '</div>';
+  }
+  // 결산 팝업
+  function openRecapModal(dreams) {
+    var r = dreamRecap(dreams);
+    if (!r) return;
+    var host = document.createElement('div');
+    host.className = 'modal-host';
+    host.innerHTML = '<div class="modal recap-modal" role="dialog" aria-modal="true">' +
+      recapInnerHtml(r) +
+      '<div class="modal-actions"><button class="btn ghost" data-act="close">닫기</button></div>' +
+      '</div>';
+    document.body.appendChild(host);
+    function close() { document.removeEventListener('keydown', onKey); if (host.parentNode) host.parentNode.removeChild(host); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', onKey);
+    host.addEventListener('click', function (e) {
+      if (e.target === host || e.target.getAttribute('data-act') === 'close') close();
+    });
+  }
+
   function stats(c) {
     var dreams = Store.getDreams();
     var st = Classify.buildStats(dreams);
@@ -904,7 +1318,12 @@
     var topEmo = st.topEmotion ? Store.emotionById(st.topEmotion) : null;
     var topEmoVal = topEmo ? '<span style="color:' + topEmo.color + '">' + esc(topEmo.label) + '</span>' : '-';
 
+    var recap = dreamRecap(dreams);
     c.innerHTML = head('통계', '당신의 무의식이 그리는 패턴을 들여다보세요.') +
+      (recap && recap.count >= 3
+        ? '<button class="btn recap-open view-enter" id="recapBtn">' + global.Icons.ui('spark', { size: 15 }) +
+            '<span>' + esc(recap.title) + ' 결산</span>' + global.Icons.ui('arrow', { size: 14 }) + '</button>'
+        : '') +
       '<div class="stat-strip view-enter">' +
         ssItem(global.Icons.ui('moon', { size: 18 }), 'var(--accent)', '총 꿈 개수',
           st.total + '<small>개</small>', 'var(--accent)') +
@@ -912,9 +1331,11 @@
           st.recent30 + '<small>개</small>', '') +
         ssItem(topEmo ? global.Icons.emotion(st.topEmotion, 18) : global.Icons.ui('info', { size: 18 }),
           topEmo ? topEmo.color : 'var(--text-dim)', '가장 많은 감정',
-          topEmo ? esc(topEmo.label) : '-', topEmo ? topEmo.color : '') +
+          topEmo ? esc(topEmo.label) : '-', topEmo ? 'var(--accent)' : '') +
         ssItem(global.Icons.ui('pin', { size: 18 }), 'var(--cat-place)', '가장 많은 장소',
-          st.topPlaceName ? esc(st.topPlaceName) : '-', st.topPlaceName ? 'var(--cat-place)' : '') +
+          st.topPlaceName ? esc(st.topPlaceName) : '-', '') +
+        ssItem(global.Icons.ui('spark', { size: 18 }), 'var(--accent-2)', '연속 기록',
+          st.streak + '<small>일</small>', st.streak ? 'var(--accent)' : '') +
       '</div>' +
       '<div class="stats-grid view-enter">' +
         '<div class="card chart-wrap">' +
@@ -930,6 +1351,8 @@
       '</div>';
 
     global.Viz.renderEmotionChart(document.getElementById('emoChart'), st);
+    var rb = document.getElementById('recapBtn');
+    if (rb) rb.onclick = function () { openRecapModal(dreams); };
   }
 
   /* ============================ 꿈 지도 ============================ */
@@ -945,16 +1368,16 @@
       return;
     }
 
-    // 모바일에선 노드를 줄여(상위 12개) 혼잡 완화
-    var maxNodes = (window.innerWidth <= 600) ? 12 : 20;
-    var graph = Classify.buildGraph(dreams, maxNodes);
+    // 노드는 빈도 상위만, 엣지는 노드당 강한 연결 3개로 제한해 과밀(헤어볼) 방지
+    var maxNodes = (window.innerWidth <= 600) ? 10 : 16;
+    var graph = Classify.buildGraph(dreams, maxNodes, 3);
     if (!graph.nodes.length) {
       c.innerHTML = head('꿈 지도', '꿈 속 요소들의 연결을 탐험합니다.') +
         emptyCard('map', '아직 그릴 연결이 없습니다', '키워드가 등장하는 꿈을 더 기록해보세요.');
       return;
     }
 
-    c.innerHTML = head('꿈 지도', '같은 꿈에 함께 나타난 요소들이 서로 연결됩니다. 노드를 눌러보세요.') +
+    c.innerHTML = '<div class="page-head"><h1>꿈 지도</h1><p>같은 꿈에 함께 나타난 요소들이 서로 연결됩니다.<br class="br-m">노드를 눌러보세요.</p></div>' +
       '<div class="card view-enter" style="padding:14px"><canvas id="mapCanvas"></canvas></div>' +
       '<div class="map-legend">' +
         '<span class="lg"><span class="sw" style="background:var(--cat-place)"></span>장소</span>' +
@@ -1043,12 +1466,38 @@
         '<div class="theme-grid" id="effectGrid">' + fxCards + '</div>' +
         '<div style="border-top:1px solid var(--border);margin:20px 0 4px"></div>' +
         row('닉네임', '<input id="nickInput" class="input" style="max-width:220px" value="' + esc(s.nickname) + '" placeholder="닉네임">') +
+        ((s.lock && s.lock.pin)
+          ? '<div style="border-top:1px solid var(--border);margin:8px 0 0"></div>' +
+            row('일기 잠금 PIN', '<span style="display:inline-flex;gap:8px">' +
+              '<button class="btn sm" id="pinChange">PIN 변경</button>' +
+              '<button class="btn sm danger" id="pinClear">PIN 삭제</button></span>')
+          : '') +
       '</div>' +
       '<div class="card" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
         '<div class="eyebrow" style="margin-bottom:14px">데이터 · ' + count + '개 기록</div>' +
         row('백업', '<button class="btn sm" id="exportBtn">JSON 내보내기</button>') +
         row('복원', '<label class="btn sm" style="cursor:pointer">파일 가져오기<input type="file" id="importFile" accept="application/json,.json" hidden></label>') +
         row('예시', '<button class="btn sm" id="sampleBtn">예시 데이터 불러오기</button>') +
+      '</div>' +
+      '<div class="card" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
+        '<div class="eyebrow" style="margin-bottom:6px">기기 간 동기화</div>' +
+        (s.syncId
+          ? // ── 연결됨: 코드 표시 + 자동 동기화 안내 + 해제 ──
+            '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem"><b style="color:var(--accent)">✓ 자동 동기화 켜짐</b> — 꿈을 저장하면 자동으로 클라우드에 올라가고, 다른 기기에서 이 앱을 열면 자동으로 내려받아요.</p>' +
+            row('내 동기화 코드',
+              '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"><code class="sync-code" id="syncCodeView">' + esc(s.syncId) + '</code>' +
+              '<button class="btn sm" id="syncCopy">복사</button></span>') +
+            '<p style="color:var(--text-faint);margin:8px 0 16px;font-size:.8rem">다른 기기의 설정에서 <b>"코드로 연결"</b> 에 이 코드를 넣으면 같은 기록이 이어져요. (코드는 비밀로 보관)</p>' +
+            row('', '<span style="display:inline-flex;gap:8px;flex-wrap:wrap">' +
+              '<button class="btn sm" id="syncNow">지금 동기화</button>' +
+              '<button class="btn sm danger" id="syncOff">연결 해제</button></span>')
+          : // ── 미연결: 시작하거나 기존 코드로 연결 ──
+            '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem">시작하면 이 기기에 <b>동기화 코드</b>가 생겨요. 다른 기기에 그 코드만 넣으면, 이후엔 저장·열기 때 <b>자동으로</b> 같은 기록이 유지됩니다. (마지막 저장 우선)</p>' +
+            row('새로 시작', '<button class="btn sm primary" id="syncStart">동기화 시작하기</button>') +
+            row('코드로 연결', '<span style="display:inline-flex;gap:8px;flex-wrap:wrap">' +
+              '<input id="syncCodeIn" class="input" style="max-width:200px" placeholder="다른 기기의 코드">' +
+              '<button class="btn sm" id="syncJoin">연결</button></span>')
+        ) +
       '</div>' +
       '<div class="card" style="padding:24px 26px;max-width:680px">' +
         '<div class="eyebrow" style="margin-bottom:8px;color:var(--danger)">위험 구역</div>' +
@@ -1116,9 +1565,9 @@
       };
       if (Store.getDreams().length > 0) {
         confirmModal({
-          title: '예시 데이터를 추가할까요?',
-          message: '기존 기록은 그대로 두고 예시 꿈 ' + (global.SampleData || []).length + '개가 더해집니다.',
-          confirm: '추가'
+          title: '예시 데이터를 불러올까요?',
+          message: '예시 꿈 ' + (global.SampleData || []).length + '개로 새로 채웁니다. 이미 불러온 예시는 갱신되고(중복 누적 없음), 직접 쓴 기록은 그대로 유지됩니다.',
+          confirm: '불러오기'
         }).then(function (ok) { if (ok) run(); });
       } else { run(); }
     };
@@ -1129,6 +1578,79 @@
       }).then(function (ok) {
         if (ok) { Store.clearAll(); toast(tmsg('trash', '초기화되었습니다.')); setTimeout(function () { global.location.reload(); }, 500); }
       });
+    };
+    // 일기 잠금 PIN 관리 (PIN이 있을 때만 노출)
+    var pinChange = document.getElementById('pinChange');
+    if (pinChange) pinChange.onclick = function () {
+      global.Lock.setPin(function (saved) { if (saved) toast(tmsg('check', 'PIN을 변경했어요.')); });
+    };
+    var pinClear = document.getElementById('pinClear');
+    if (pinClear) pinClear.onclick = function () {
+      confirmModal({ title: 'PIN을 삭제할까요?', message: '잠가둔 일기들이 모두 잠금 해제됩니다.', confirm: '삭제', danger: true })
+        .then(function (ok) {
+          if (!ok) return;
+          Store.getDreams().forEach(function (dr) { if (dr.locked) Store.updateDream(dr.id, { locked: false }); });
+          Store.clearLock();
+          toast(tmsg('check', 'PIN을 삭제하고 잠금을 모두 풀었어요.'));
+          settings(c);
+        });
+    };
+
+    // 기기 간 동기화 (코드 자동 생성 + 자동 동기화)
+    var syncStart = document.getElementById('syncStart');
+    if (syncStart) syncStart.onclick = function () {
+      if (!global.Sync || !global.Sync.newCode) { toast(tmsg('warn', '동기화 모듈을 불러오지 못했어요.')); return; }
+      var code = global.Sync.newCode();
+      syncStart.disabled = true; syncStart.textContent = '시작하는 중…';
+      var data = Store.exportSyncData();
+      global.Sync.push(code, data).then(function () {
+        Store.setSyncId(code); Store.setSyncStamp(data.updatedAt);
+        toast(tmsg('check', '동기화를 시작했어요.'));
+        settings(c);
+      }).catch(function (err) {
+        syncStart.disabled = false; syncStart.textContent = '동기화 시작하기';
+        toast(tmsg('warn', esc((err && err.message) || '시작에 실패했어요.')));
+      });
+    };
+    var syncJoin = document.getElementById('syncJoin');
+    if (syncJoin) syncJoin.onclick = function () {
+      var code = (document.getElementById('syncCodeIn').value || '').trim();
+      if (!code) { toast(tmsg('warn', '연결할 코드를 입력하세요.')); return; }
+      confirmModal({ title: '이 코드로 연결할까요?', message: '이 기기의 기록을 코드의 데이터로 맞춥니다. 먼저 백업을 권장해요.', confirm: '연결', danger: true })
+        .then(function (ok) {
+          if (!ok) return;
+          syncJoin.disabled = true; syncJoin.textContent = '연결 중…';
+          global.Sync.pull(code).then(function (data) {
+            if (!data || !Array.isArray(data.dreams)) throw new Error('이 코드에 저장된 데이터가 없어요');
+            var n = Store.importSyncData(data);
+            Store.setSyncId(code); Store.setSyncStamp(data.updatedAt || Date.now());
+            toast(tmsg('check', n + '개의 꿈으로 연결됐어요.'));
+            setTimeout(function () { go('/'); global.location.reload(); }, 700);
+          }).catch(function (err) {
+            syncJoin.disabled = false; syncJoin.textContent = '연결';
+            toast(tmsg('warn', esc((err && err.message) || '연결에 실패했어요.')));
+          });
+        });
+    };
+    var syncNow = document.getElementById('syncNow');
+    if (syncNow) syncNow.onclick = function () {
+      if (global.SyncAuto) { global.SyncAuto.push(); global.SyncAuto.pull(); }
+      toast(tmsg('check', '동기화했어요.'));
+    };
+    var syncOff = document.getElementById('syncOff');
+    if (syncOff) syncOff.onclick = function () {
+      confirmModal({ title: '연결을 해제할까요?', message: '이 기기에서 자동 동기화를 끕니다. 클라우드의 데이터와 다른 기기 연결은 그대로예요.', confirm: '해제', danger: true })
+        .then(function (ok) {
+          if (!ok) return;
+          Store.setSyncId(''); Store.setSyncStamp(0);
+          toast(tmsg('check', '연결을 해제했어요.'));
+          settings(c);
+        });
+    };
+    var syncCopy = document.getElementById('syncCopy');
+    if (syncCopy) syncCopy.onclick = function () {
+      var code = (document.getElementById('syncCodeView') || {}).textContent || '';
+      if (global.navigator.clipboard) { global.navigator.clipboard.writeText(code).then(function () { toast(tmsg('check', '코드를 복사했어요.')); }); }
     };
   }
 
@@ -1163,23 +1685,61 @@
   }
 
   // 예시(데모) 데이터 적재 — 분류 후 저장. 적재 개수 반환.
+  // 멱등: 여러 번 눌러도 중복이 쌓이지 않도록, 예시와 동일한(제목+내용) 기존 꿈·임시본을
+  //       먼저 제거한 뒤 한 세트만 적재한다. (사용자가 직접 쓴 꿈은 보존)
   function loadSampleData() {
     var list = global.SampleData || [];
-    list.forEach(function (s) {
-      var payload = { title: s.title, date: s.date, content: s.content, emotion: s.emotion };
+    var drafts = global.SampleDrafts || [];
+    function sig(o) { return (o.title || '') + ' ' + (o.content || ''); }
+    // 예시 세트에서 제거됐던 옛 항목들(누적분 정리용) — 제목만으로 매칭
+    var LEGACY_TITLES = {
+      '다시 그 학교': 1, '바다로의 도피': 1, '시간을 거슬러': 1, '거울의 방': 1,
+      '물속 궁전': 1, '시험 또 시험': 1, '날아오른 바다': 1, '귀신 들린 병원': 1
+    };
+    var dreamSig = {}; list.forEach(function (s) { dreamSig[sig(s)] = true; });
+    var draftSig = {}; drafts.forEach(function (s) { draftSig[sig(s)] = true; });
+    Store.getDreams().forEach(function (d) {
+      if (dreamSig[sig(d)] || LEGACY_TITLES[d.title]) Store.deleteDream(d.id);
+    });
+    Store.getDrafts().forEach(function (d) { if (draftSig[sig(d)]) Store.deleteDraft(d.id); });
+    // 날짜를 '오늘' 기준 상대값으로 — 최근 7일은 연속(연속 기록 streak 채움), 이후 점점 띄움
+    var today = new Date();
+    function dayStr(offset) {
+      var d = new Date(today); d.setDate(today.getDate() - offset);
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+    list.forEach(function (s, i) {
+      var offset = i < 7 ? i : 8 + (i - 7) * 2; // 0~6일전 연속, 8·10·12…일전 분산
+      var payload = { title: s.title, date: dayStr(offset), content: s.content, emotion: s.emotion, locked: !!s.locked };
       payload.keywords = Classify.classifyDream(payload);
       Store.createDream(payload);
     });
+    // 임시보관함에도 작성 중인 예시 글 적재
+    (global.SampleDrafts || []).forEach(function (s, i) {
+      Store.saveDraft({ title: s.title, content: s.content, date: dayStr(i), emotion: s.emotion });
+    });
     return list.length;
   }
-  function dreamCard(d, unlock) {
+  // 잠긴 꿈이 아직 해제 안 됐으면 내용을 가린다
+  function isHidden(d) { return !!(d && d.locked && global.Lock && !global.Lock.isUnlocked()); }
+
+  function dreamCard(d, unlock, kwClickable, q) {
+    if (isHidden(d)) {
+      return '<div class="card dream-card dc-locked" data-id="' + d.id + '" data-locked="1">' +
+        '<div class="dc-head"><div><div class="dc-title">잠긴 꿈</div>' +
+        '<div class="dc-date">' + fmtDate(d.date) + '</div></div>' +
+        '<span class="dc-lock">' + global.Icons.ui('lock', { size: 18 }) + '</span></div>' +
+        '<div class="dc-excerpt dc-lock-msg">PIN을 입력하면 볼 수 있어요</div>' +
+        '<div class="dc-foot"><span></span></div>' +
+      '</div>';
+    }
     var excerpt = (d.content || '').slice(0, 120);
     return '<div class="card dream-card" data-id="' + d.id + '">' +
-      '<div class="dc-head"><div><div class="dc-title">' + esc(d.title) + '</div>' +
+      '<div class="dc-head"><div><div class="dc-title">' + hl(d.title, q) + '</div>' +
       '<div class="dc-date">' + fmtDate(d.date) + '</div></div>' +
       global.Icons.emotionSticker(d.emotion, 30) + '</div>' +
-      '<div class="dc-excerpt">' + esc(excerpt) + (d.content.length > 120 ? '…' : '') + '</div>' +
-      '<div class="dc-foot">' + (kwChipsHtml(d.keywords, unlock, false, 3) || '<span></span>') +
+      '<div class="dc-excerpt">' + hl(excerpt, q) + (d.content.length > 120 ? '…' : '') + '</div>' +
+      '<div class="dc-foot">' + (kwChipsHtml(d.keywords, unlock, !!kwClickable, 3) || '<span></span>') +
       '<button class="fav-btn ' + (d.favorite ? 'on' : '') + '" data-fav="' + d.id + '" aria-label="즐겨찾기">' +
       (d.favorite ? '★' : '☆') + '</button></div>' +
       '</div>';
@@ -1213,18 +1773,22 @@
     // 3) data-go 버튼 (빈 상태/없음 화면)
     var b = e.target.closest('[data-go]');
     if (b) { go(b.getAttribute('data-go')); return; }
-    // 4) 꿈 카드 → 상세
+    // 4·5) 꿈 카드 / 피처드·압축 행 → 상세 (잠긴 꿈은 PIN 확인 후)
     var card = e.target.closest('.dream-card');
-    if (card) { go('/dreams/' + card.getAttribute('data-id')); return; }
-    // 5) 피처드/압축 행 → 상세
     var drow = e.target.closest('[data-dream-id]');
-    if (drow) go('/dreams/' + drow.getAttribute('data-dream-id'));
+    var did = card ? card.getAttribute('data-id') : (drow ? drow.getAttribute('data-dream-id') : null);
+    if (did) {
+      var dr = Store.getDream(did);
+      if (dr && dr.locked && global.Lock && !global.Lock.isUnlocked()) {
+        global.Lock.requirePin(function () { go('/dreams/' + did); });
+      } else { go('/dreams/' + did); }
+    }
   });
 
   global.UI = { toast: toast, confirmModal: confirmModal, go: go };
   global.Views = {
     onboard: onboard, dashboard: dashboard, form: form, list: list,
     detail: detail, dex: dex, dexKeyword: dexKeyword, stats: stats,
-    map: map, settings: settings
+    map: map, settings: settings, drafts: drafts
   };
 })(window);

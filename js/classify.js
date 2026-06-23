@@ -157,6 +157,7 @@
     var now = Date.now();
     var THIRTY = 30 * 24 * 60 * 60 * 1000;
     var recent30 = 0;
+    var dayCounts = {};            // 'YYYY-MM-DD' → 기록 수 (연속 기록 계산용)
 
     dreams.forEach(function (d) {
       if (emotionCount[d.emotion] === undefined) emotionCount[d.emotion] = 0;
@@ -167,9 +168,21 @@
         placeCount[id] = (placeCount[id] || 0) + 1;
       });
 
+      var day = (d.date || '').slice(0, 10);
+      if (day) dayCounts[day] = (dayCounts[day] || 0) + 1;
+
       var t = d.createdAt || (d.date ? new Date(d.date).getTime() : 0);
       if (t && now - t <= THIRTY) recent30++;
     });
+
+    // 연속 기록(streak): 오늘(없으면 어제)부터 거꾸로 연속으로 기록이 있는 날 수
+    function ymd(dt) {
+      var m = dt.getMonth() + 1, dd = dt.getDate();
+      return dt.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd;
+    }
+    var streak = 0, cur = new Date();
+    if (!dayCounts[ymd(cur)]) cur.setDate(cur.getDate() - 1);
+    while (dayCounts[ymd(cur)]) { streak++; cur.setDate(cur.getDate() - 1); }
 
     // 최다 감정
     var topEmotion = null, topEmotionN = 0;
@@ -191,14 +204,16 @@
       topEmotion: topEmotion,
       topEmotionN: topEmotionN,
       topPlaceName: topPlaceItem ? topPlaceItem.name : null,
-      topPlaceN: topPlaceN
+      topPlaceN: topPlaceN,
+      streak: streak
     };
   }
 
   /* ----------------------------- 꿈 지도 ----------------------------- */
   // 키워드 = 노드, 같은 꿈에 함께 등장 = 엣지. 빈도 상위 노드만 사용.
-  function buildGraph(dreams, maxNodes) {
+  function buildGraph(dreams, maxNodes, maxEdgesPerNode) {
     maxNodes = maxNodes || 24;
+    maxEdgesPerNode = maxEdgesPerNode || 3;
     var freq = {};   // key: cat:id → count
     var meta = {};   // key → { cat, id, name }
     var edges = {};  // key 'a|b' → weight
@@ -245,6 +260,24 @@
         edgeList.push({ source: parts[0], target: parts[1], weight: edges[ek] });
       }
     });
+
+    // 헤어볼(과밀) 방지: 강한 연결부터 보며 양 끝 노드가 모두 한도 미만일 때만 유지.
+    // → 노드당 연결을 maxEdgesPerNode 근처로 묶어 "별자리"처럼 간결하게.
+    if (maxEdgesPerNode && edgeList.length) {
+      edgeList.sort(function (a, b) { return b.weight - a.weight; });
+      var deg = {};
+      var pruned = [];
+      for (var ei = 0; ei < edgeList.length; ei++) {
+        var e = edgeList[ei];
+        var ds = deg[e.source] || 0, dt = deg[e.target] || 0;
+        if (ds < maxEdgesPerNode && dt < maxEdgesPerNode) {
+          pruned.push(e);
+          deg[e.source] = ds + 1;
+          deg[e.target] = dt + 1;
+        }
+      }
+      edgeList = pruned;
+    }
 
     return { nodes: nodes, edges: edgeList };
   }

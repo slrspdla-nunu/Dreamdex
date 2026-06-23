@@ -11,6 +11,7 @@
 
   var KEY_DREAMS = 'dreamdex.dreams.v1';
   var KEY_SETTINGS = 'dreamdex.settings.v1';
+  var KEY_DRAFTS = 'dreamdex.drafts.v1';
 
   /* 감정 정의 (단일 선택) — 표시는 Icons.emotion(id) 커스텀 글리프 사용 */
   // color 는 테마 토큰(var(--emo-*)) — CSS에서 테마 강조색과 섞여 자동 조화.
@@ -73,7 +74,9 @@
     pattern: 'dots',
     effect: 'aurora',
     nickname: '',
-    onboarded: false
+    onboarded: false,
+    lock: { on: false, pin: '' },  // 꿈 일기 잠금 (pin은 해시 저장)
+    syncId: ''                     // 기기 간 동기화 코드(클라우드 blob id)
   };
 
   // 구버전 다크/라이트 저장값을 새 테마로 마이그레이션
@@ -107,6 +110,38 @@
     return next;
   }
 
+  /* ----------------------------- 잠금(PIN) ----------------------------- */
+  // 단순 해시 — 평문 PIN을 localStorage에 그대로 두지 않기 위함(강력한 보안 아님)
+  function hashPin(pin) {
+    var h = 5381, s = 'dreamdex:' + pin;
+    for (var i = 0; i < s.length; i++) { h = ((h << 5) + h) + s.charCodeAt(i); h = h >>> 0; }
+    return 'h' + h.toString(36);
+  }
+  function hasPin() { var l = getSettings().lock; return !!(l && l.pin); }                  // PIN이 설정돼 있는가
+  function appLockEnabled() { var l = getSettings().lock; return !!(l && l.on && l.pin); }   // 앱 전체 잠금(부팅 게이트)
+  function setPin(pin) { var l = getSettings().lock || {}; return saveSettings({ lock: { on: !!l.on, pin: hashPin(String(pin)) } }); } // PIN만 설정(앱 게이트 변경 안 함)
+  function setAppLock(on) { var l = getSettings().lock || {}; return saveSettings({ lock: { on: !!on, pin: l.pin || '' } }); }       // 앱 게이트 토글(PIN 유지)
+  function clearLock() { return saveSettings({ lock: { on: false, pin: '' } }); }
+  function verifyPin(pin) { var l = getSettings().lock; return !!(l && l.pin && l.pin === hashPin(String(pin))); }
+
+  /* ----------------------------- 동기화 데이터 ----------------------------- */
+  // 로컬 변경 알림(자동 동기화용) — app.js가 구독해 디바운스 업로드
+  var changeFns = [];
+  function onChange(fn) { if (typeof fn === 'function') changeFns.push(fn); }
+  function emitChange() { for (var i = 0; i < changeFns.length; i++) { try { changeFns[i](); } catch (e) {} } }
+
+  function exportSyncData() { return { v: 1, updatedAt: Date.now(), dreams: getDreams(), drafts: getDrafts() }; }
+  function importSyncData(obj) {
+    if (!obj || !Array.isArray(obj.dreams)) throw new Error('동기화 데이터가 올바르지 않아요');
+    write(KEY_DREAMS, obj.dreams);
+    if (Array.isArray(obj.drafts)) write(KEY_DRAFTS, obj.drafts);
+    return obj.dreams.length;
+  }
+  function getSyncId() { return getSettings().syncId || ''; }
+  function setSyncId(id) { return saveSettings({ syncId: id || '' }); }
+  function getSyncStamp() { return getSettings().syncStamp || 0; }
+  function setSyncStamp(ms) { return saveSettings({ syncStamp: ms || 0 }); }
+
   /* ------------------------------ 꿈 CRUD ----------------------------- */
   function getDreams() {
     var list = read(KEY_DREAMS, []);
@@ -132,12 +167,14 @@
       content: data.content || '',
       emotion: data.emotion || 'wonder',
       favorite: false,
+      locked: !!data.locked,
       keywords: data.keywords || { place: [], person: [], situation: [] },
       createdAt: now,
       updatedAt: now
     };
     list.push(dream);
     write(KEY_DREAMS, list);
+    emitChange();
     return dream;
   }
 
@@ -147,6 +184,7 @@
       if (list[i].id === id) {
         list[i] = Object.assign({}, list[i], patch, { updatedAt: Date.now() });
         write(KEY_DREAMS, list);
+        emitChange();
         return list[i];
       }
     }
@@ -157,6 +195,7 @@
     var list = getDreams();
     var next = list.filter(function (d) { return d.id !== id; });
     write(KEY_DREAMS, next);
+    if (next.length !== list.length) emitChange();
     return next.length !== list.length;
   }
 
@@ -164,6 +203,50 @@
     var d = getDream(id);
     if (!d) return null;
     return updateDream(id, { favorite: !d.favorite });
+  }
+
+  /* ----------------------------- 임시보관함(드래프트) ----------------------------- */
+  function getDrafts() {
+    var list = read(KEY_DRAFTS, []);
+    return Array.isArray(list) ? list : [];
+  }
+  function getDraft(id) {
+    var list = getDrafts();
+    for (var i = 0; i < list.length; i++) { if (list[i].id === id) return list[i]; }
+    return null;
+  }
+  // data: { title, content, date, emotion }. id 주어지고 존재하면 갱신, 아니면 새로 생성.
+  function saveDraft(data, id) {
+    var list = getDrafts();
+    var now = Date.now();
+    var fields = {
+      title: (data.title || '').trim(),
+      content: data.content || '',
+      date: data.date || new Date().toISOString().slice(0, 10),
+      emotion: data.emotion || ''
+    };
+    if (id) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) {
+          list[i] = Object.assign({}, list[i], fields, { savedAt: now });
+          write(KEY_DRAFTS, list);
+          emitChange();
+          return list[i];
+        }
+      }
+    }
+    var draft = Object.assign({ id: newId(), createdAt: now, savedAt: now }, fields);
+    list.push(draft);
+    write(KEY_DRAFTS, list);
+    emitChange();
+    return draft;
+  }
+  function deleteDraft(id) {
+    var list = getDrafts();
+    var next = list.filter(function (d) { return d.id !== id; });
+    write(KEY_DRAFTS, next);
+    if (next.length !== list.length) emitChange();
+    return next.length !== list.length;
   }
 
   /* --------------------------- 내보내기/초기화 --------------------------- */
@@ -189,6 +272,7 @@
   function clearAll() {
     global.localStorage.removeItem(KEY_DREAMS);
     global.localStorage.removeItem(KEY_SETTINGS);
+    global.localStorage.removeItem(KEY_DRAFTS);
   }
 
   /* 테마 메타 (설정 화면 스와치 피커용) */
@@ -263,12 +347,29 @@
     emotionById: emotionById,
     getSettings: getSettings,
     saveSettings: saveSettings,
+    hasPin: hasPin,
+    appLockEnabled: appLockEnabled,
+    setPin: setPin,
+    setAppLock: setAppLock,
+    clearLock: clearLock,
+    verifyPin: verifyPin,
+    exportSyncData: exportSyncData,
+    importSyncData: importSyncData,
+    getSyncId: getSyncId,
+    setSyncId: setSyncId,
+    getSyncStamp: getSyncStamp,
+    setSyncStamp: setSyncStamp,
+    onChange: onChange,
     getDreams: getDreams,
     getDream: getDream,
     createDream: createDream,
     updateDream: updateDream,
     deleteDream: deleteDream,
     toggleFavorite: toggleFavorite,
+    getDrafts: getDrafts,
+    getDraft: getDraft,
+    saveDraft: saveDraft,
+    deleteDraft: deleteDraft,
     exportJSON: exportJSON,
     importJSON: importJSON,
     clearAll: clearAll
