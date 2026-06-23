@@ -4,7 +4,7 @@
  *       내비게이션 실패 시 캐시된 index.html 로 폴백(해시 라우팅 SPA).
  *       Chart.js(교차출처 CDN)는 캐시하지 않음 → 오프라인 시 charts.js 폴백 막대그래프 동작.
  */
-var CACHE = 'dreamdex-v1';
+var CACHE = 'dreamdex-v2';
 var CORE = [
   './',
   './index.html',
@@ -37,8 +37,11 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // 교차출처(CDN 등)는 패스
 
+  // 내비게이션(index.html)은 HTTP 캐시를 우회해 항상 최신을 받아옴 → 설치 앱이 옛 버전에 갇히지 않음
+  var fetchReq = (req.mode === 'navigate') ? new Request(req.url, { cache: 'reload' }) : req;
+
   e.respondWith(
-    fetch(req).then(function (res) {
+    fetch(fetchReq).then(function (res) {
       if (res && res.status === 200) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(req, copy); });
