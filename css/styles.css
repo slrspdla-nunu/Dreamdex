@@ -975,6 +975,29 @@ button { font-family: inherit; cursor: pointer; }
 /* 임시보관함 */
 .modal-actions-3 { flex-wrap: wrap; }
 .form-actions { display: flex; gap: 10px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+
+/* 키워드 수동 편집 */
+.kw-reclass { font-size: 0.72rem; color: var(--accent); background: none; border: none; cursor: pointer; margin-left: 8px; font-weight: 600; }
+.kw-reclass:hover { text-decoration: underline; }
+.kw-editor { display: flex; flex-direction: column; gap: 9px; }
+.kw-cat { display: flex; align-items: flex-start; gap: 10px; }
+.kw-cat-label { flex: 0 0 auto; min-width: 40px; font-size: 0.76rem; font-weight: 700; padding-top: 7px; }
+.kw-cat-label.cat-place { color: var(--cat-place); }
+.kw-cat-label.cat-person { color: var(--cat-person); }
+.kw-cat-label.cat-situation { color: var(--cat-situation); }
+.kw-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; min-width: 0; }
+.kw-ed-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px;
+  border-radius: 999px; font-size: 0.78rem; font-weight: 500;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text); cursor: pointer;
+}
+.kw-ed-chip.cat-place { color: var(--cat-place); }
+.kw-ed-chip.cat-person { color: var(--cat-person); }
+.kw-ed-chip.cat-situation { color: var(--cat-situation); }
+.kw-ed-chip .kx { opacity: 0.45; font-size: 0.7rem; }
+.kw-ed-chip:hover { border-color: var(--danger); color: var(--danger); }
+.kw-ed-chip:hover .kx { opacity: 1; }
+.kw-add-input { width: 104px; padding: 5px 10px; font-size: 0.78rem; }
 /* 폼 상단 헤더 행: 제목 왼쪽 / 임시보관함 버튼 오른쪽 (카드 폭에 정렬) */
 .form-head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; max-width: 760px; }
 .form-head-row .page-head { flex: 1; min-width: 0; }

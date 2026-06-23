@@ -554,6 +554,9 @@
             '<span class="char-count" id="charCount">0자</span>' +
           '</div>' +
           '<div class="form-hint">' + global.Icons.ui('spark', { size: 13 }) + '<span>저장하면 내용 속 장소·인물·상황이 자동으로 도감에 등록됩니다.</span></div></div>' +
+        '<div class="field"><label>키워드 <span style="color:var(--text-faint)">(자동 분류 · 직접 추가·삭제)</span>' +
+          '<button type="button" class="kw-reclass" id="kwReclass">내용에서 다시 분류</button></label>' +
+          '<div id="kwEditor" class="kw-editor"></div></div>' +
         '<div class="form-actions">' +
           '<button type="submit" class="btn primary" id="submitBtn">' + (editing ? '수정 저장' : '기록하고 수집하기') + '</button>' +
           '<button type="button" class="btn ghost" id="cancelBtn">취소</button>' +
@@ -580,6 +583,62 @@
       submitBtn.disabled = !(contentEl.value.trim() && selectedEmo);
     }
     contentEl.addEventListener('input', refresh);
+
+    // ── 키워드 수동 편집 (자동 분류 + 추가/삭제) ──
+    var DICT = global.DREAM_DICTIONARY;
+    function cloneKw(k) { k = k || {}; return { place: (k.place || []).slice(), person: (k.person || []).slice(), situation: (k.situation || []).slice() }; }
+    var kwState = editing ? cloneKw(d.keywords) : Classify.classifyDream({ title: titleEl.value, content: contentEl.value });
+    var kwTouched = !!editing; // 수정 모드: 저장된 키워드를 내용 입력으로 덮어쓰지 않음
+    var kwEditor = document.getElementById('kwEditor');
+    function nameToId(cat, name) {
+      name = (name || '').trim().toLowerCase(); if (!name) return null;
+      var items = DICT[cat].items;
+      for (var i = 0; i < items.length; i++) { if (items[i].name.toLowerCase() === name) return items[i].id; }
+      return null;
+    }
+    function renderKwEditor() {
+      kwEditor.innerHTML = DICT.categories.map(function (cat) {
+        var chips = kwState[cat].map(function (id) {
+          var it = Classify.findItem(cat, id);
+          return '<button type="button" class="kw-ed-chip cat-' + cat + '" data-rm="' + cat + ':' + id + '">' + esc(it ? it.name : id) + '<span class="kx">✕</span></button>';
+        }).join('');
+        var opts = DICT[cat].items.map(function (it) { return '<option value="' + esc(it.name) + '">'; }).join('');
+        return '<div class="kw-cat">' +
+          '<span class="kw-cat-label cat-' + cat + '">' + esc(DICT[cat].label) + '</span>' +
+          '<div class="kw-chips">' + chips +
+            '<input class="kw-add-input input" list="kwlist-' + cat + '" data-add="' + cat + '" placeholder="+ 추가" autocomplete="off">' +
+            '<datalist id="kwlist-' + cat + '">' + opts + '</datalist></div></div>';
+      }).join('');
+    }
+    function reclassifyIfUntouched() {
+      if (kwTouched) return;
+      kwState = Classify.classifyDream({ title: titleEl.value, content: contentEl.value });
+      renderKwEditor();
+    }
+    function addKw(inp, viaEnter) {
+      var cat = inp.getAttribute('data-add');
+      var id = nameToId(cat, inp.value);
+      if (id) {
+        if (kwState[cat].indexOf(id) === -1) kwState[cat].push(id);
+        kwTouched = true; renderKwEditor();
+        var ni = kwEditor.querySelector('[data-add="' + cat + '"]'); if (ni) ni.focus();
+      } else if (viaEnter && inp.value.trim()) {
+        toast(tmsg('warn', '목록에 있는 키워드를 골라주세요.')); inp.value = '';
+      }
+    }
+    renderKwEditor();
+    kwEditor.addEventListener('click', function (e) {
+      var rm = e.target.closest('[data-rm]'); if (!rm) return;
+      var p = rm.getAttribute('data-rm').split(':'), cat = p[0], id = p[1];
+      kwState[cat] = kwState[cat].filter(function (x) { return x !== id; });
+      kwTouched = true; renderKwEditor();
+    });
+    kwEditor.addEventListener('change', function (e) { var inp = e.target.closest('[data-add]'); if (inp) addKw(inp, false); });
+    kwEditor.addEventListener('keydown', function (e) { if (e.key !== 'Enter') return; var inp = e.target.closest('[data-add]'); if (inp) { e.preventDefault(); addKw(inp, true); } });
+    contentEl.addEventListener('input', reclassifyIfUntouched);
+    titleEl.addEventListener('input', reclassifyIfUntouched);
+    var kwReclass = document.getElementById('kwReclass');
+    if (kwReclass) kwReclass.onclick = function () { kwState = Classify.classifyDream({ title: titleEl.value, content: contentEl.value }); kwTouched = true; renderKwEditor(); };
 
     function selectEmo(btn) {
       selectedEmo = btn.getAttribute('data-emo');
@@ -740,7 +799,7 @@
       if (!selectedEmo) { toast(tmsg('warn', '감정을 하나 선택해주세요.')); return; }
 
       var payload = { title: title, content: content, date: date, emotion: selectedEmo, locked: locked };
-      payload.keywords = Classify.classifyDream(payload);
+      payload.keywords = cloneKw(kwState); // 사용자가 다듬은 키워드 그대로 저장
 
       global.clearLeaveGuard();                               // 정상 저장 → 가드 해제
       if (currentDraftId) Store.deleteDraft(currentDraftId);  // 임시보관본은 기록되면 제거
