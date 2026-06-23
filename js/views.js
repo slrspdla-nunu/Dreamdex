@@ -231,19 +231,36 @@
     document.getElementById('appShell').style.display = 'none';
     var host = document.getElementById('onboardHost');
     host.style.display = 'block';
+    var cloud = global.Cloud;
+    var canLogin = !!(cloud && cloud.isReady && cloud.isReady());
+    var gIcon = '<svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.3C29.2 35 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.6l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.2 5.3C39.9 35.6 44 30.4 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>';
     host.innerHTML =
       '<div class="onboard"><div class="card onboard-card view-enter">' +
       '<div class="big-logo">' + global.Icons.logo(40) + '</div>' +
       '<h1>Dreamdex</h1>' +
       '<div class="quote">"꿈은 사라지는 기록이 아니라, 수집 가능한 데이터이다."</div>' +
       '<p>당신의 무의식을 기록하면 꿈 속 장소·인물·상황이 자동으로 분류되어 나만의 도감으로 채워집니다.</p>' +
+      (canLogin
+        ? '<button class="btn primary onboard-btn" id="googleBtn"><span class="ob-g">' + gIcon + 'Google로 시작하기</span></button>' +
+          '<p class="onboard-hint">로그인하면 모든 기기에서 같은 꿈을 볼 수 있어요.</p>' +
+          '<div class="onboard-or"><span>또는</span></div>'
+        : '') +
       '<div class="field" style="text-align:left">' +
       '<label for="nick">어떻게 불러드릴까요? <span style="color:var(--text-faint)">(선택)</span></label>' +
       '<input id="nick" class="input" placeholder="닉네임" maxlength="20">' +
       '</div>' +
-      '<button class="btn primary" id="startBtn" style="width:100%;justify-content:center">꿈 기록 시작하기</button>' +
+      '<button class="btn ' + (canLogin ? 'ghost' : 'primary') + ' onboard-btn" id="startBtn">' + (canLogin ? '로그인 없이 시작' : '꿈 기록 시작하기') + '</button>' +
       '</div></div>';
 
+    var gb = document.getElementById('googleBtn');
+    if (gb) gb.onclick = function () {
+      gb.disabled = true;
+      // 성공 시 Cloud.onUser → onboarded=true → render()가 앱으로 전환(여기서 처리 불필요)
+      cloud.signIn().catch(function (err) {
+        gb.disabled = false;
+        toast(tmsg('warn', esc((err && err.message) || '로그인에 실패했어요.')));
+      });
+    };
     document.getElementById('startBtn').onclick = function () {
       var nick = document.getElementById('nick').value.trim();
       Store.saveSettings({ onboarded: true, nickname: nick });
@@ -1628,12 +1645,12 @@
     };
     var cloudLogout = document.getElementById('cloudLogout');
     if (cloudLogout) cloudLogout.onclick = function () {
-      confirmModal({ title: '로그아웃할까요?', message: '이 기기에서 실시간 동기화를 끕니다. 클라우드와 다른 기기의 데이터는 그대로예요. (이 기기의 기록도 그대로 남아요)', confirm: '로그아웃', danger: true })
+      confirmModal({ title: '로그아웃할까요?', message: '이 기기에서 로그아웃하고 처음 화면으로 돌아가요. 꿈 기록은 클라우드에 안전하게 남아, 다시 로그인하면 그대로 돌아옵니다.', confirm: '로그아웃', danger: true })
         .then(function (ok) {
           if (!ok || !global.Cloud) return;
           global.Cloud.signOut().then(function () {
-            Store.setSyncStamp(0);
-            toast(tmsg('check', '로그아웃했어요.'));
+            Store.logoutReset();         // 로컬 비우고 온보딩으로
+            setTimeout(function () { global.location.reload(); }, 300);
           });
         });
     };

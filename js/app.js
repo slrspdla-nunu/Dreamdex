@@ -459,8 +459,12 @@
     global.Store.onChange(cloudSchedulePush);
     global.Cloud.onUser(function (u) {
       if (_cloudUnwatch) { _cloudUnwatch(); _cloudUnwatch = null; }
-      if (u) { _cloudUnwatch = global.Cloud.watch(cloudApply); }
-      render(); // 로그인/로그아웃 시 화면(설정 등) 갱신
+      if (u) {
+        // 로그인하면 온보딩 완료로 간주 → 온보딩 화면에서 로그인 시 바로 앱으로
+        if (!global.Store.getSettings().onboarded) global.Store.saveSettings({ onboarded: true });
+        _cloudUnwatch = global.Cloud.watch(cloudApply);
+      }
+      render(); // 로그인/로그아웃 시 화면 전환
     });
   }
 

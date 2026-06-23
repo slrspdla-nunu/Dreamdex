@@ -1325,6 +1325,17 @@ button { font-family: inherit; cursor: pointer; }
 .onboard-card h1 { font-size: 1.9rem; margin: 0 0 10px; }
 .onboard-card .quote { color: var(--accent-2); font-style: italic; margin-bottom: 18px; word-break: keep-all; }
 .onboard-card p { color: var(--text-dim); margin-bottom: 26px; word-break: keep-all; line-height: 1.6; }
+/* 온보딩 버튼/로그인 */
+.onboard-btn { width: 100%; justify-content: center; }
+.onboard-btn .ob-g { display: inline-flex; align-items: center; gap: 9px; }
+.onboard-hint { color: var(--text-faint); font-size: 0.8rem; margin: 10px 0 0; }
+.onboard-or {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--text-faint); font-size: 0.8rem; margin: 18px 0;
+}
+.onboard-or::before, .onboard-or::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
 
 /* 페이지 전환 애니메이션 */
 .view-enter { animation: viewIn 0.45s var(--ease); }

@@ -140,6 +140,8 @@
   }
   // 닉네임 저장 + 변경 알림(클라우드 동기화 트리거)
   function setNickname(n) { saveSettings({ nickname: (n || '').trim() }); emitChange(); }
+  // 로그아웃 시 로컬 데이터 비우고 온보딩으로 (클라우드 데이터는 보존 — 재로그인 시 복구). 테마 등 기기 설정은 유지.
+  function logoutReset() { write(KEY_DREAMS, []); write(KEY_DRAFTS, []); saveSettings({ onboarded: false, nickname: '', syncStamp: 0 }); }
   function getSyncId() { return getSettings().syncId || ''; }
   function setSyncId(id) { return saveSettings({ syncId: id || '' }); }
   function getSyncStamp() { return getSettings().syncStamp || 0; }
@@ -363,6 +365,7 @@
     getSyncStamp: getSyncStamp,
     setSyncStamp: setSyncStamp,
     setNickname: setNickname,
+    logoutReset: logoutReset,
     onChange: onChange,
     getDreams: getDreams,
     getDream: getDream,
