@@ -1567,10 +1567,10 @@ button { font-family: inherit; cursor: pointer; }
   .br-m { display: inline; }
 
   /* 빈 상태 카드: 모바일에선 텍스트·여백 축소 (제목/설명이 너무 컸음) */
-  .card.empty { padding: 38px 20px; }
-  .card.empty h3 { font-size: 1.08rem; line-height: 1.4; }
-  .card.empty p { font-size: 0.85rem; line-height: 1.55; }
-  .card.empty .empty-art { margin-bottom: 12px; }
+  .card.empty, .dd-empty { padding: 38px 20px; }
+  .card.empty h3, .dd-empty h3 { font-size: 1.08rem; line-height: 1.4; }
+  .card.empty p, .dd-empty p { font-size: 0.85rem; line-height: 1.55; }
+  .card.empty .empty-art, .dd-empty .empty-art { margin-bottom: 12px; }
 
   /* 상세 헤더: 모바일에선 세로로 쌓아 제목이 전체 폭을 쓰게(액션 버튼에 밀려 줄바꿈되던 문제) */
   .detail-head { flex-direction: column; gap: 18px; }
@@ -2153,6 +2153,8 @@ button { font-family: inherit; cursor: pointer; }
   border-color: var(--dd-line);
 }
 .dd-empty h3 { color: var(--dd-text); }
+/* 한글이 단어 중간에서 잘리지 않게 — 띄어쓰기 단위로만 줄바꿈 */
+.dd-empty h3, .dd-empty p, .empty h3, .empty p { word-break: keep-all; }
 .dd-panel-empty { padding: 30px 16px; color: var(--text-faint); text-align: center; font-size: 0.78rem; }
 
 @media (max-width: 1040px) {
