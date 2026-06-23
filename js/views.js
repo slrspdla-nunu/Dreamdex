@@ -824,7 +824,7 @@
 
   /* ============================ 목록 ============================ */
   var LIST_PAGE = 15;
-  var listState = { q: '', emotion: 'all', fav: false, day: null, month: null, kw: null, calMonth: null, shown: LIST_PAGE };
+  var listState = { q: '', emotion: 'all', fav: false, day: null, month: null, kw: null, calMonth: null, shown: LIST_PAGE, sort: 'new' };
   var _calOutside = null; // 달력 팝업 바깥클릭 닫기 핸들러(중복 방지용)
 
   function monthLabel(iso) {
@@ -856,6 +856,8 @@
         '<div class="search"><span class="ic">' + global.Icons.ui('search', { size: 16 }) + '</span>' +
         '<input id="searchInput" class="input" placeholder="제목·내용 검색" value="' + esc(listState.q) + '"></div>' +
         '<div class="tool-actions">' +
+          '<button class="fchip sort-toggle" id="sortToggle" aria-label="정렬 순서 바꾸기" title="정렬 순서">' +
+            global.Icons.ui('sort', { size: 16 }) + '<span class="sort-label">' + (listState.sort === 'old' ? '오래된순' : '최신순') + '</span></button>' +
           '<div class="cal-toggle-wrap">' +
             '<button class="fchip cal-toggle" id="calToggle" aria-label="날짜로 보기">' +
               global.Icons.ui('calendar', { size: 16 }) + '</button>' +
@@ -882,6 +884,7 @@
         if (q && (d.title + ' ' + d.content).toLowerCase().indexOf(q) === -1) return false;
         return true;
       });
+      if (listState.sort === 'old') filtered.reverse(); // 기본 최신순 → 오래된순
       var host = document.getElementById('listResult');
       // 활성 키워드 필터 칩 (✕로 해제)
       var activeFilter = '';
@@ -917,7 +920,7 @@
         html += '<div class="load-more-wrap"><button class="btn ghost" id="loadMoreBtn">더 보기 ' +
           '<span class="lm-n">' + remaining + '개</span></button></div>';
       }
-      host.innerHTML = activeFilter + html;
+      host.innerHTML = activeFilter + '<div class="list-count">' + filtered.length + '개의 꿈</div>' + html;
       var lm = document.getElementById('loadMoreBtn');
       if (lm) lm.onclick = function () { listState.shown += LIST_PAGE; renderResult(); };
     }
@@ -1021,6 +1024,13 @@
     document.getElementById('favFilter').onclick = function () {
       listState.fav = !listState.fav;
       this.classList.toggle('active', listState.fav);
+      listState.shown = LIST_PAGE;
+      renderResult();
+    };
+    document.getElementById('sortToggle').onclick = function () {
+      listState.sort = listState.sort === 'old' ? 'new' : 'old';
+      var lbl = this.querySelector('.sort-label');
+      if (lbl) lbl.textContent = listState.sort === 'old' ? '오래된순' : '최신순';
       listState.shown = LIST_PAGE;
       renderResult();
     };
