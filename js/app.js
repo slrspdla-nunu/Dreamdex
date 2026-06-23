@@ -263,7 +263,7 @@
   var Viz = global.Viz;
 
   /* ----------------------------- 잠금(PIN) ----------------------------- */
-  var _unlocked = false; // 이번 세션에서 해제됨 (새로고침하면 다시 잠김)
+  var _unlockedIds = {}; // 이번 세션에서 개별 해제된 꿈 id들 (새로고침하면 다시 잠김)
 
   // 4자리 PIN 패드를 host에 렌더. opts:{ title, sub, onComplete(pin, api) }
   function buildPinPad(host, opts) {
@@ -306,15 +306,16 @@
   }
   function destroyPinPad(host) { if (host && host._pinKey) { document.removeEventListener('keydown', host._pinKey); host._pinKey = null; } }
 
-  // 잠긴 일기 열람용 PIN 확인 모달 — onOk()는 통과 시 호출
-  function requirePin(onOk) {
-    if (!global.Store.hasPin() || _unlocked) { _unlocked = true; onOk(); return; }
+  // 잠긴 일기 열람용 PIN 확인 모달 — onOk()는 통과 시 호출. id는 해당 꿈만 개별 해제.
+  function requirePin(onOk, id) {
+    if (id && _unlockedIds[id]) { onOk(); return; }            // 이미 이 꿈을 해제했음
+    if (!global.Store.hasPin()) { if (id) _unlockedIds[id] = true; onOk(); return; } // PIN 미설정 → 바로 열기
     var host = document.createElement('div'); host.className = 'modal-host';
     var inner = document.createElement('div'); inner.className = 'modal pin-modal';
     host.appendChild(inner); document.body.appendChild(host);
     function close() { destroyPinPad(inner); if (host.parentNode) host.parentNode.removeChild(host); }
     buildPinPad(inner, { title: '잠금 해제', sub: 'PIN을 입력하세요', onComplete: function (pin, api) {
-      if (global.Store.verifyPin(pin)) { _unlocked = true; close(); onOk(); }
+      if (global.Store.verifyPin(pin)) { if (id) _unlockedIds[id] = true; close(); onOk(); }
       else { api.shake('PIN이 일치하지 않아요'); setTimeout(function () { api.reset(); }, 400); }
     }});
     var cl = document.createElement('button'); cl.className = 'pin-close'; cl.type = 'button';
@@ -327,7 +328,7 @@
   // 일기 잠금용 PIN 설정/확인
   global.Lock = {
     hasPin: function () { return global.Store.hasPin(); },
-    isUnlocked: function () { return _unlocked; },
+    isUnlocked: function (id) { return !!_unlockedIds[id]; },
     requirePin: requirePin,
     // onDone(saved) — PIN을 새로 설정(두 번 입력 확인). 앱 전체는 잠그지 않음.
     setPin: function (onDone) {
@@ -339,7 +340,7 @@
       function step(title, sub) {
         buildPinPad(inner, { title: title, sub: sub, onComplete: function (pin, api) {
           if (first === null) { first = pin; step('PIN 확인', '한 번 더 입력하세요'); }
-          else if (pin === first) { global.Store.setPin(pin); _unlocked = true; close(true); }
+          else if (pin === first) { global.Store.setPin(pin); close(true); }
           else { first = null; api.shake('일치하지 않아요'); setTimeout(function () { step('PIN 설정', '4자리 숫자를 입력하세요'); }, 450); }
         }});
         var cl = document.createElement('button'); cl.className = 'pin-close'; cl.type = 'button';

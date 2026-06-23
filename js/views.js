@@ -1036,7 +1036,7 @@
         '</div>';
       document.getElementById('backBtn').onclick = function () { go('/dreams'); };
       document.getElementById('unlockBtn').onclick = function () {
-        global.Lock.requirePin(function () { detail(c, params); });
+        global.Lock.requirePin(function () { detail(c, params); }, d.id);
       };
       return;
     }
@@ -1706,7 +1706,7 @@
     return list.length;
   }
   // 잠긴 꿈이 아직 해제 안 됐으면 내용을 가린다
-  function isHidden(d) { return !!(d && d.locked && global.Lock && !global.Lock.isUnlocked()); }
+  function isHidden(d) { return !!(d && d.locked && global.Lock && !global.Lock.isUnlocked(d.id)); }
 
   function dreamCard(d, unlock, kwClickable, q) {
     if (isHidden(d)) {
@@ -1764,8 +1764,8 @@
     var did = card ? card.getAttribute('data-id') : (drow ? drow.getAttribute('data-dream-id') : null);
     if (did) {
       var dr = Store.getDream(did);
-      if (dr && dr.locked && global.Lock && !global.Lock.isUnlocked()) {
-        global.Lock.requirePin(function () { go('/dreams/' + did); });
+      if (dr && dr.locked && global.Lock && !global.Lock.isUnlocked(did)) {
+        global.Lock.requirePin(function () { go('/dreams/' + did); }, did);
       } else { go('/dreams/' + did); }
     }
   });
