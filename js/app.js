@@ -422,46 +422,46 @@
   }
 
   /* ----------------------------- 부팅 ----------------------------- */
-  /* ----------------------------- 자동 동기화 ----------------------------- */
-  // 코드가 설정돼 있으면: 저장할 때 자동 업로드(디바운스) + 열 때/온라인 복귀 시 자동 다운로드.
+  /* ----------------------------- 클라우드 동기화 ----------------------------- */
+  // 구글 로그인 시: 내 계정 칸을 실시간 구독(원격 최신이면 반영) + 로컬 변경 시 디바운스 업로드.
   // 최신 판별은 payload.updatedAt vs 로컬 syncStamp (마지막 저장 우선).
-  var _syncPushTimer = null;
-  function autoPush() {
-    if (!global.Sync || !global.navigator.onLine) return;
-    var code = global.Store.getSyncId();
-    if (!code) return;
+  var _cloudUnwatch = null, _cloudTimer = null;
+  function cloudPushNow() {
+    if (!global.Cloud || !global.Cloud.isReady() || !global.Cloud.currentUser()) return;
     var data = global.Store.exportSyncData();
-    global.Sync.push(code, data).then(function () {
+    global.Cloud.push(data).then(function () {
       global.Store.setSyncStamp(data.updatedAt);
-    }).catch(function () { /* 오프라인/일시 오류 → 다음 변경·복귀 때 재시도 */ });
+    }).catch(function () { /* 일시 오류 → 다음 변경 때 재시도 */ });
   }
-  function scheduleAutoPush() {
-    if (_syncPushTimer) clearTimeout(_syncPushTimer);
-    _syncPushTimer = setTimeout(autoPush, 1500);
+  function cloudSchedulePush() {
+    if (_cloudTimer) clearTimeout(_cloudTimer);
+    _cloudTimer = setTimeout(cloudPushNow, 1200);
   }
-  function autoPull() {
-    if (!global.Sync || !global.navigator.onLine) return;
-    var code = global.Store.getSyncId();
-    if (!code) return;
-    global.Sync.pull(code).then(function (remote) {
-      if (!remote || typeof remote !== 'object' || !Array.isArray(remote.dreams)) return;
-      var rStamp = remote.updatedAt || 0;
-      if (rStamp > global.Store.getSyncStamp()) {
-        global.Store.importSyncData(remote);
-        global.Store.setSyncStamp(rStamp);
-        render(); // 새 데이터 반영
-      } else {
-        autoPush(); // 로컬이 더 최신 → 원격 갱신
-      }
-    }).catch(function () {});
+  // 실시간 구독 콜백: 원격 값으로 로컬을 맞추거나(원격이 최신), 로컬을 올림(로컬이 최신).
+  function cloudApply(remote) {
+    if (!remote || typeof remote !== 'object' || !Array.isArray(remote.dreams)) {
+      cloudPushNow(); // 클라우드 비어있음(첫 로그인) → 로컬을 올림
+      return;
+    }
+    var rStamp = remote.updatedAt || 0;
+    var lStamp = global.Store.getSyncStamp();
+    if (rStamp > lStamp) {
+      global.Store.importSyncData(remote);
+      global.Store.setSyncStamp(rStamp);
+      render(); // 새 데이터 즉시 반영
+    } else if (rStamp < lStamp) {
+      cloudPushNow(); // 로컬이 더 최신 → 원격 갱신
+    }
   }
-  function initSync() {
-    if (!global.Sync || !global.Store.onChange) return;
-    global.Store.onChange(scheduleAutoPush);
-    global.addEventListener('online', autoPull);
-    autoPull();
+  function initCloud() {
+    if (!global.Cloud || !global.Store.onChange) return;
+    global.Store.onChange(cloudSchedulePush);
+    global.Cloud.onUser(function (u) {
+      if (_cloudUnwatch) { _cloudUnwatch(); _cloudUnwatch = null; }
+      if (u) { _cloudUnwatch = global.Cloud.watch(cloudApply); }
+      render(); // 로그인/로그아웃 시 화면(설정 등) 갱신
+    });
   }
-  global.SyncAuto = { push: autoPush, pull: autoPull };
 
   function boot() {
     var st = global.Store.getSettings();
@@ -472,7 +472,7 @@
     initCursorTrail();
     initInstallPrompt();
     render();
-    initSync();
+    initCloud();
   }
 
   if (document.readyState === 'loading') {

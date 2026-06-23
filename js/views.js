@@ -1479,26 +1479,28 @@
         row('복원', '<label class="btn sm" style="cursor:pointer">파일 가져오기<input type="file" id="importFile" accept="application/json,.json" hidden></label>') +
         row('예시', '<button class="btn sm" id="sampleBtn">예시 데이터 불러오기</button>') +
       '</div>' +
-      '<div class="card" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
-        '<div class="eyebrow" style="margin-bottom:6px">기기 간 동기화</div>' +
-        (s.syncId
-          ? // ── 연결됨: 코드 표시 + 자동 동기화 안내 + 해제 ──
-            '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem"><b style="color:var(--accent)">✓ 자동 동기화 켜짐</b> — 꿈을 저장하면 자동으로 클라우드에 올라가고, 다른 기기에서 이 앱을 열면 자동으로 내려받아요.</p>' +
-            row('내 동기화 코드',
-              '<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap"><code class="sync-code" id="syncCodeView">' + esc(s.syncId) + '</code>' +
-              '<button class="btn sm" id="syncCopy">복사</button></span>') +
-            '<p style="color:var(--text-faint);margin:8px 0 16px;font-size:.8rem">다른 기기의 설정에서 <b>"코드로 연결"</b> 에 이 코드를 넣으면 같은 기록이 이어져요. (코드는 비밀로 보관)</p>' +
-            row('', '<span style="display:inline-flex;gap:8px;flex-wrap:wrap">' +
-              '<button class="btn sm" id="syncNow">지금 동기화</button>' +
-              '<button class="btn sm danger" id="syncOff">연결 해제</button></span>')
-          : // ── 미연결: 시작하거나 기존 코드로 연결 ──
-            '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem">시작하면 이 기기에 <b>동기화 코드</b>가 생겨요. 다른 기기에 그 코드만 넣으면, 이후엔 저장·열기 때 <b>자동으로</b> 같은 기록이 유지됩니다. (마지막 저장 우선)</p>' +
-            row('새로 시작', '<button class="btn sm primary" id="syncStart">동기화 시작하기</button>') +
-            row('코드로 연결', '<span style="display:inline-flex;gap:8px;flex-wrap:wrap">' +
-              '<input id="syncCodeIn" class="input" style="max-width:200px" placeholder="다른 기기의 코드">' +
-              '<button class="btn sm" id="syncJoin">연결</button></span>')
-        ) +
-      '</div>' +
+      (function () {
+        var cloud = global.Cloud;
+        var u = cloud && cloud.currentUser ? cloud.currentUser() : null;
+        var offline = !(cloud && cloud.isReady && cloud.isReady());
+        return '<div class="card" style="padding:24px 26px;max-width:680px;margin-bottom:18px">' +
+          '<div class="eyebrow" style="margin-bottom:6px">기기 간 동기화</div>' +
+          (u
+            ? // ── 로그인됨: 실시간 동기화 ──
+              '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem"><b style="color:var(--accent)">✓ 실시간 동기화 켜짐</b> — 꿈을 저장하면 자동으로 올라가고, 다른 기기에도 새로고침 없이 바로 반영돼요.</p>' +
+              row('로그인 계정',
+                '<span style="display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+                (u.photoURL ? '<img src="' + esc(u.photoURL) + '" alt="" style="width:28px;height:28px;border-radius:50%">' : '') +
+                '<span style="font-size:.9rem">' + esc(u.displayName || '') + (u.email ? ' <span style="color:var(--text-faint)">· ' + esc(u.email) + '</span>' : '') + '</span></span>') +
+              row('', '<button class="btn sm danger" id="cloudLogout">로그아웃</button>')
+            : // ── 미로그인 ──
+              '<p style="color:var(--text-dim);margin:0 0 16px;font-size:.86rem">구글로 로그인하면, 그 계정의 꿈이 <b>모든 기기에서 실시간으로 같아져요.</b> 코드 입력도 새로고침도 필요 없어요.</p>' +
+              (offline
+                ? '<p style="color:var(--text-faint);margin:0;font-size:.85rem">⚠️ 지금은 오프라인이거나 로그인 모듈을 불러오지 못했어요. 인터넷 연결 후 다시 열어 주세요.</p>'
+                : row('', '<button class="btn sm primary" id="cloudLogin"><span style="display:inline-flex;align-items:center;gap:8px"><svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.1 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.5-5.2l-6.2-5.3C29.2 35 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.6l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.2 5.3C39.9 35.6 44 30.4 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>Google로 로그인</span></button>'))
+          ) +
+        '</div>';
+      })() +
       '<div class="card" style="padding:24px 26px;max-width:680px">' +
         '<div class="eyebrow" style="margin-bottom:8px;color:var(--danger)">위험 구역</div>' +
         '<p style="color:var(--text-dim);margin:0 0 16px">모든 꿈과 도감 기록이 영구히 삭제됩니다.</p>' +
@@ -1596,61 +1598,29 @@
         });
     };
 
-    // 기기 간 동기화 (코드 자동 생성 + 자동 동기화)
-    var syncStart = document.getElementById('syncStart');
-    if (syncStart) syncStart.onclick = function () {
-      if (!global.Sync || !global.Sync.newCode) { toast(tmsg('warn', '동기화 모듈을 불러오지 못했어요.')); return; }
-      var code = global.Sync.newCode();
-      syncStart.disabled = true; syncStart.textContent = '시작하는 중…';
-      var data = Store.exportSyncData();
-      global.Sync.push(code, data).then(function () {
-        Store.setSyncId(code); Store.setSyncStamp(data.updatedAt);
-        toast(tmsg('check', '동기화를 시작했어요.'));
-        settings(c);
+    // 기기 간 동기화 (구글 로그인 + 실시간)
+    var cloudLogin = document.getElementById('cloudLogin');
+    if (cloudLogin) cloudLogin.onclick = function () {
+      if (!global.Cloud) { toast(tmsg('warn', '로그인 모듈을 불러오지 못했어요.')); return; }
+      cloudLogin.disabled = true;
+      global.Cloud.signIn().then(function (res) {
+        // 팝업 성공 → onUser 콜백이 화면을 갱신함. 리디렉트면 페이지가 이동함.
+        if (res && res.user) toast(tmsg('check', '로그인됐어요.'));
       }).catch(function (err) {
-        syncStart.disabled = false; syncStart.textContent = '동기화 시작하기';
-        toast(tmsg('warn', esc((err && err.message) || '시작에 실패했어요.')));
+        cloudLogin.disabled = false;
+        toast(tmsg('warn', esc((err && err.message) || '로그인에 실패했어요.')));
       });
     };
-    var syncJoin = document.getElementById('syncJoin');
-    if (syncJoin) syncJoin.onclick = function () {
-      var code = (document.getElementById('syncCodeIn').value || '').trim();
-      if (!code) { toast(tmsg('warn', '연결할 코드를 입력하세요.')); return; }
-      confirmModal({ title: '이 코드로 연결할까요?', message: '이 기기의 기록을 코드의 데이터로 맞춥니다. 먼저 백업을 권장해요.', confirm: '연결', danger: true })
+    var cloudLogout = document.getElementById('cloudLogout');
+    if (cloudLogout) cloudLogout.onclick = function () {
+      confirmModal({ title: '로그아웃할까요?', message: '이 기기에서 실시간 동기화를 끕니다. 클라우드와 다른 기기의 데이터는 그대로예요. (이 기기의 기록도 그대로 남아요)', confirm: '로그아웃', danger: true })
         .then(function (ok) {
-          if (!ok) return;
-          syncJoin.disabled = true; syncJoin.textContent = '연결 중…';
-          global.Sync.pull(code).then(function (data) {
-            if (!data || !Array.isArray(data.dreams)) throw new Error('이 코드에 저장된 데이터가 없어요');
-            var n = Store.importSyncData(data);
-            Store.setSyncId(code); Store.setSyncStamp(data.updatedAt || Date.now());
-            toast(tmsg('check', n + '개의 꿈으로 연결됐어요.'));
-            setTimeout(function () { go('/'); global.location.reload(); }, 700);
-          }).catch(function (err) {
-            syncJoin.disabled = false; syncJoin.textContent = '연결';
-            toast(tmsg('warn', esc((err && err.message) || '연결에 실패했어요.')));
+          if (!ok || !global.Cloud) return;
+          global.Cloud.signOut().then(function () {
+            Store.setSyncStamp(0);
+            toast(tmsg('check', '로그아웃했어요.'));
           });
         });
-    };
-    var syncNow = document.getElementById('syncNow');
-    if (syncNow) syncNow.onclick = function () {
-      if (global.SyncAuto) { global.SyncAuto.push(); global.SyncAuto.pull(); }
-      toast(tmsg('check', '동기화했어요.'));
-    };
-    var syncOff = document.getElementById('syncOff');
-    if (syncOff) syncOff.onclick = function () {
-      confirmModal({ title: '연결을 해제할까요?', message: '이 기기에서 자동 동기화를 끕니다. 클라우드의 데이터와 다른 기기 연결은 그대로예요.', confirm: '해제', danger: true })
-        .then(function (ok) {
-          if (!ok) return;
-          Store.setSyncId(''); Store.setSyncStamp(0);
-          toast(tmsg('check', '연결을 해제했어요.'));
-          settings(c);
-        });
-    };
-    var syncCopy = document.getElementById('syncCopy');
-    if (syncCopy) syncCopy.onclick = function () {
-      var code = (document.getElementById('syncCodeView') || {}).textContent || '';
-      if (global.navigator.clipboard) { global.navigator.clipboard.writeText(code).then(function () { toast(tmsg('check', '코드를 복사했어요.')); }); }
     };
   }
 

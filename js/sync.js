@@ -1,44 +1,92 @@
 /* =========================================================================
- * Dreamdex — 기기 간 동기화 (Sync)  ·  Firebase Realtime Database (REST)
+ * Dreamdex — 클라우드 동기화 (Cloud)  ·  Firebase Auth(Google) + Realtime DB
  * -------------------------------------------------------------------------
- * 앱이 코드를 자동 생성하고, 그 코드 칸(/sync/<code>)에 데이터(JSON)를 저장한다.
- * 다른 기기에서 같은 코드를 넣으면 같은 기록을 본다. (SDK 없이 fetch만 사용)
- *   - newCode()        : 새 랜덤 동기화 코드 생성(로컬, 네트워크 X)
- *   - push(code, data) : 그 코드 칸에 데이터 저장(PUT, 덮어쓰기)
- *   - pull(code)       : 그 코드 칸의 데이터 가져오기(GET) — 없으면 null
- * 보안: 코드를 아는 사람만 그 칸 접근(규칙으로 목록 조회 차단). 충돌은 마지막 저장 우선.
- * 데이터에 updatedAt(ms)을 실어 자동 동기화 시 최신본 판별에 사용.
+ * 구글 로그인 한 번이면, 그 계정의 데이터(/users/<uid>)를 기기 간 실시간 동기화.
+ * 코드 입력 없음 · 새로고침 없이 자동 반영. (SDK compat 빌드 사용)
+ *   - signIn()/signOut()  : 구글 로그인/로그아웃 (모바일은 팝업 실패 시 리디렉트)
+ *   - onUser(cb)          : 로그인 상태 변화 구독 (cb(user|null))
+ *   - currentUser()       : 현재 사용자(없으면 null)
+ *   - push(data)          : 내 계정 칸에 저장(덮어쓰기)
+ *   - watch(onData)       : 내 계정 칸 실시간 구독 → 변경 시 onData(value)
+ * 오프라인/SDK 미로딩이면 isReady()=false → 앱은 로컬로 정상 동작.
  * ========================================================================= */
 (function (global) {
   'use strict';
 
-  // Firebase Realtime Database 주소 (끝 슬래시 없이)
-  var DB = 'https://dreamdex-b903b-default-rtdb.firebaseio.com';
+  // Firebase 웹 설정값 (공개돼도 안전 — 보안은 로그인 + DB 규칙이 담당)
+  var firebaseConfig = {
+    apiKey: "AIzaSyDD0LI0n0soB8Z9rpm3O-eXY10SOg2nmo0",
+    authDomain: "dreamdex-b903b.firebaseapp.com",
+    databaseURL: "https://dreamdex-b903b-default-rtdb.firebaseio.com",
+    projectId: "dreamdex-b903b",
+    storageBucket: "dreamdex-b903b.firebasestorage.app",
+    messagingSenderId: "555011250603",
+    appId: "1:555011250603:web:897bea9e30522e4f0b1aee",
+    measurementId: "G-R4LH1Z31B3"
+  };
 
-  function path(code) { return DB + '/sync/' + encodeURIComponent(code) + '.json'; }
+  var ready = false, auth = null, db = null;
+  var user = undefined;          // undefined=아직 모름, null=로그아웃, obj=로그인
+  var userCbs = [];
 
-  // 읽기 쉬운 랜덤 코드 (혼동되는 글자 제외, 10자리)
-  function newCode() {
-    var abc = 'abcdefghjkmnpqrstuvwxyz23456789';
-    var s = '';
-    for (var i = 0; i < 10; i++) s += abc.charAt(Math.floor(Math.random() * abc.length));
-    return s.slice(0, 5) + '-' + s.slice(5); // 예: k7m2p-q9rtx
-  }
-
-  function push(code, data) {
-    return fetch(path(code), {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
-    }).then(function (r) {
-      if (!r.ok) throw new Error('올리기에 실패했어요 (' + r.status + ')');
+  function init() {
+    if (ready) return true;
+    if (!global.firebase || !global.firebase.initializeApp) return false; // 오프라인 등 SDK 미로딩
+    try {
+      global.firebase.initializeApp(firebaseConfig);
+      auth = global.firebase.auth();
+      db = global.firebase.database();
+      ready = true;
+      // 모바일 리디렉트 로그인 결과 회수(있으면)
+      auth.getRedirectResult().catch(function () {});
+      auth.onAuthStateChanged(function (u) {
+        user = u || null;
+        for (var i = 0; i < userCbs.length; i++) { try { userCbs[i](user); } catch (e) {} }
+      });
       return true;
-    });
-  }
-  function pull(code) {
-    return fetch(path(code), { headers: { 'Accept': 'application/json' } }).then(function (r) {
-      if (!r.ok) throw new Error('불러오기에 실패했어요 (' + r.status + ')');
-      return r.json(); // 없으면 null
-    });
+    } catch (e) { return false; }
   }
 
-  global.Sync = { newCode: newCode, push: push, pull: pull, configured: DB.indexOf('firebaseio') !== -1 || DB.indexOf('firebasedatabase') !== -1 };
+  function isMobile() { return /Android|iPhone|iPad|iPod/i.test(global.navigator.userAgent || ''); }
+
+  function signIn() {
+    if (!ready) return Promise.reject(new Error('오프라인이거나 로그인 모듈을 불러오지 못했어요'));
+    var prov = new global.firebase.auth.GoogleAuthProvider();
+    if (isMobile()) return auth.signInWithRedirect(prov);   // 모바일은 리디렉트가 안정적
+    return auth.signInWithPopup(prov).catch(function (err) {
+      // 팝업 차단/취소 → 리디렉트로 폴백
+      if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user')) {
+        return auth.signInWithRedirect(prov);
+      }
+      throw err;
+    });
+  }
+  function signOut() { return ready ? auth.signOut() : Promise.resolve(); }
+  function currentUser() { return user || null; }
+  function onUser(cb) {
+    if (typeof cb !== 'function') return;
+    userCbs.push(cb);
+    if (user !== undefined) cb(user); // 이미 상태를 알면 즉시 호출
+  }
+
+  function ref() { return db.ref('users/' + currentUser().uid); }
+  function push(data) {
+    if (!ready || !currentUser()) return Promise.reject(new Error('로그인이 필요해요'));
+    return ref().set(data);
+  }
+  function watch(onData) {
+    if (!ready || !currentUser()) return function () {};
+    var r = ref();
+    var handler = r.on('value', function (snap) { onData(snap.val()); });
+    return function () { r.off('value', handler); };
+  }
+
+  global.Cloud = {
+    isReady: function () { return ready; },
+    signIn: signIn, signOut: signOut,
+    currentUser: currentUser, onUser: onUser,
+    push: push, watch: watch
+  };
+
+  init();
 })(window);
