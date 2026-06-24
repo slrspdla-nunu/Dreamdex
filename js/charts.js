@@ -83,10 +83,10 @@
       var v = stats.emotionCount[e.id] || 0;
       var w = Math.round((v / max) * 100);
       html += '<div style="display:flex;align-items:center;gap:10px">' +
-        '<span style="width:54px;font-size:0.84rem;color:var(--text-dim)">' + e.label + '</span>' +
+        '<span style="width:54px;font-size:var(--fs-body);color:var(--text-dim)">' + e.label + '</span>' +
         '<div style="flex:1;height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden">' +
         '<span style="display:block;height:100%;width:' + w + '%;background:' + e.color + '"></span></div>' +
-        '<span style="width:24px;text-align:right;font-size:0.84rem">' + v + '</span></div>';
+        '<span style="width:24px;text-align:right;font-size:var(--fs-body)">' + v + '</span></div>';
     });
     html += '</div>';
     var div = document.createElement('div');
