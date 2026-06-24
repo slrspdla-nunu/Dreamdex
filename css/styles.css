@@ -915,7 +915,7 @@ button { font-family: inherit; cursor: pointer; }
 .toolbar .search:focus-within .ic { color: var(--accent); }
 /* 감정 필터 — 한 줄 가로 스크롤 + 가벼운 알약 (모바일 앱 스타일) */
 .filter-chips {
-  display: flex; flex-wrap: nowrap; gap: 8px;
+  display: flex; flex-wrap: nowrap; gap: 8px; margin-bottom: 12px;
   overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
 .filter-chips::-webkit-scrollbar { display: none; }
@@ -1755,8 +1755,10 @@ button { font-family: inherit; cursor: pointer; }
   /* 페이지 제목 — 상단바에 너무 붙지 않게 내려줌 */
   .page-head { margin-top: 6px; margin-bottom: 20px; }
   .page-head p { font-size: var(--fs-sm); }
-  .toolbar { margin-bottom: 12px; }
-  .filter-chips { margin-left: -16px; margin-right: -16px; padding: 0 16px 2px; }
+  /* 모바일: 검색+버튼3개를 한 줄로(줄바꿈 방지) + 섹션 간 세로 간격 확보 */
+  .toolbar { flex-wrap: nowrap; margin-bottom: 18px; }
+  .toolbar .search { min-width: 0; }
+  .filter-chips { margin-left: -16px; margin-right: -16px; padding: 0 16px 2px; margin-bottom: 16px; }
 }
 
 @media (max-width: 480px) {

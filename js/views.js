@@ -930,7 +930,7 @@
             global.Icons.ui('star', { size: 16 }) + '</button>' +
         '</div>' +
       '</div>' +
-      '<div class="filter-chips" id="emoFilters" style="margin-bottom:12px">' + emoFilters + '</div>' +
+      '<div class="filter-chips" id="emoFilters">' + emoFilters + '</div>' +
       '<div id="listResult"></div>';
 
     function renderResult() {
