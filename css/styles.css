@@ -2169,7 +2169,7 @@ button { font-family: inherit; cursor: pointer; }
   align-items: end;
 }
 .dd-bar-item { height: 100%; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; gap: 2px; }
-.dd-bar-track { width: 100%; max-width: 22px; height: 158px; display: flex; align-items: flex-end; }
+.dd-bar-track { width: 100%; max-width: 22px; height: 136px; display: flex; align-items: flex-end; }
 .dd-bar-track span { width: 100%; min-height: 8px; border-radius: 5px 5px 2px 2px; opacity: 0.88; }
 .dd-bar-item b { color: var(--text-dim); font-size: 0.62rem; font-weight: 500; }
 .dd-bar-item small { color: var(--text-faint); font-size: 0.58rem; }
