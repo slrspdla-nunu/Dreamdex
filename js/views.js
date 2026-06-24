@@ -343,9 +343,12 @@
       };
       c.innerHTML =
         '<div class="m-home view-enter">' +
-          '<header class="m-greet">' +
-            '<p class="m-greet-date">' + fmtDate(todayIso) + '</p>' +
-            '<h1 class="m-greet-title">' + mGreet + '<br>어떤 꿈을 꾸셨나요?</h1>' +
+          '<header class="m-hero">' +
+            '<div class="m-hero-art" aria-hidden="true">' + global.Icons.skyBand() + '</div>' +
+            '<div class="m-hero-copy">' +
+              '<p class="m-hero-date">' + fmtDate(todayIso) + '</p>' +
+              '<h1 class="m-hero-title">' + mGreet + '<br>어떤 꿈을 꾸셨나요?</h1>' +
+            '</div>' +
           '</header>' +
           '<button class="m-cta' + (mWrote ? ' done' : '') + '" data-go="/new">' +
             '<span class="m-cta-ic">' + global.Icons.ui(mWrote ? 'check' : 'pen', { size: 20 }) + '</span>' +
