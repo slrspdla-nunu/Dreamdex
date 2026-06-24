@@ -1740,8 +1740,7 @@ button { font-family: inherit; cursor: pointer; }
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; position: sticky; top: 0; z-index: 50;
-    background: var(--bg-2); border-bottom: 1px solid var(--border);
-    backdrop-filter: blur(8px);
+    background: var(--bg); border-bottom: 0;   /* 본문 배경과 동일 → 띠/이음새 제거 */
   }
   .topbar .brand { padding: 0; }
 
