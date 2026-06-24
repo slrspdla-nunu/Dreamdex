@@ -483,6 +483,19 @@
       var m = document.getElementById('main');
       if (m) { m.setAttribute('tabindex', '-1'); m.focus(); }
     });
+    // 모바일/데스크톱 경계(860px)를 넘나들면 홈을 다시 그림 — 창 크기 바꿔도 레이아웃이 즉시 전환
+    var _bpMobile = global.innerWidth <= 860;
+    var _bpTimer = null;
+    global.addEventListener('resize', function () {
+      var m = global.innerWidth <= 860;
+      if (m === _bpMobile) return;
+      _bpMobile = m;
+      if (_bpTimer) clearTimeout(_bpTimer);
+      _bpTimer = setTimeout(function () {
+        var p = currentPath();
+        if (p === '/' || p === '') render(); // 홈만 레이아웃이 JS로 갈림
+      }, 120);
+    });
     render();
     initCloud();
   }
