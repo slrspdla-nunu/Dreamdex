@@ -344,11 +344,13 @@
       c.innerHTML =
         '<div class="m-home view-enter">' +
           '<header class="m-hero">' +
-            '<div class="m-hero-art" aria-hidden="true">' + global.Icons.skyBand() + '</div>' +
-            '<div class="m-hero-copy">' +
-              '<p class="m-hero-date">' + fmtDate(todayIso) + '</p>' +
-              '<h1 class="m-hero-title">' + mGreet + '<br>어떤 꿈을 꾸셨나요?</h1>' +
-            '</div>' +
+            '<div class="m-hero-moon" aria-hidden="true"></div>' +
+            '<p class="m-hero-eyebrow">' + fmtDate(todayIso) + (settings.nickname ? ' · ' + esc(settings.nickname) + '님' : '') + '</p>' +
+            '<h1 class="m-hero-head">' +
+              '<span class="mh-a">오늘은</span>' +
+              '<span class="mh-b">어떤 꿈을</span>' +
+              '<span class="mh-c">꾸셨나요?</span>' +
+            '</h1>' +
           '</header>' +
           '<button class="m-cta' + (mWrote ? ' done' : '') + '" data-go="/new">' +
             '<span class="m-cta-ic">' + global.Icons.ui(mWrote ? 'check' : 'pen', { size: 20 }) + '</span>' +
