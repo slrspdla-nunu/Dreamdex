@@ -1601,32 +1601,32 @@ button { font-family: inherit; cursor: pointer; }
 /* ====================== 모바일 다이어리 홈 (네이티브 앱 레이아웃) ====================== */
 .m-home { display: flex; flex-direction: column; gap: 22px; }
 /* 인사 hero (에디토리얼 빅 타이포 + 떠 있는 달) */
-/* 인사 hero — PC hero와 동일한 하늘 일러스트(달·구름·별) + 강조 그라데이션 위 빅타이포 */
 .m-hero {
   position: relative; overflow: hidden;
   min-height: 46vh; min-height: 46svh;
-  padding: 18px 18px 16px;
+  padding: 18px 4px 12px;
   display: flex; flex-direction: column; justify-content: space-between;
-  border-radius: 22px;
-  background: var(--hero-grad);
 }
-.m-hero-art { position: absolute; inset: 0; z-index: 0; }
-.m-hero-art svg { width: 100%; height: 100%; display: block; }
-.m-hero-art::after {
-  content: ""; position: absolute; inset: 0;
-  /* 하단 카피 가독용 어둡게 */
-  background: linear-gradient(0deg, rgba(13,11,26,0.46), rgba(13,11,26,0.06) 52%, transparent 80%);
-}
-.m-hero-eyebrow { position: relative; z-index: 2; margin: 0; font-size: var(--fs-sm); font-weight: 600; color: rgba(255,255,255,0.82); }
+.m-hero-eyebrow { position: relative; z-index: 2; margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--text-faint); }
 .m-hero-head {
   position: relative; z-index: 2; margin: 0;
   display: flex; flex-direction: column; gap: 4px;
   line-height: 1.0; letter-spacing: -0.015em; word-break: keep-all;
-  text-shadow: 0 2px 14px rgba(13,11,26,0.35);
 }
-.mh-a { font-size: clamp(22px, 6.5vw, 28px); font-weight: 500; color: rgba(255,255,255,0.85); margin-bottom: 2px; }
-.mh-b { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: #ffffff; }
-.mh-c { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: #ffe6ad; }   /* 강조: 달빛 크림색 */
+.mh-a { font-size: clamp(22px, 6.5vw, 28px); font-weight: 500; color: var(--text-dim); margin-bottom: 2px; }
+.mh-b { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--text); }
+.mh-c { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--accent); }
+/* 떠 있는 보름달 — 매끈한 입체 음영 + 글로우 (얼룩 없이). 타이포 뒤로 살짝 겹침 */
+.m-hero-moon {
+  position: absolute; z-index: 1; right: -6%; top: 28%;
+  width: 152px; height: 152px; border-radius: 50%;
+  /* 좌상단 밝게 → 우하단 그늘로 자연스럽게 굴곡진 구 */
+  background: radial-gradient(circle at 33% 29%, #ffffff 0%, #f1f2ff 44%, #dee1ff 74%, #c9d0f4 100%);
+  box-shadow:
+    0 28px 64px -22px color-mix(in srgb, var(--accent) 55%, transparent),  /* 부드러운 글로우 */
+    inset -16px -18px 34px rgba(120,118,178,0.30),                          /* 우하단 곡면 그늘 */
+    inset 12px 13px 24px rgba(255,255,255,0.6);                             /* 좌상단 하이라이트 */
+}
 /* 오늘 기록 CTA */
 .m-cta {
   display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;

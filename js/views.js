@@ -344,7 +344,7 @@
       c.innerHTML =
         '<div class="m-home view-enter">' +
           '<header class="m-hero">' +
-            '<div class="m-hero-art" aria-hidden="true">' + global.Icons.skyBand() + '</div>' +
+            '<div class="m-hero-moon" aria-hidden="true"></div>' +
             '<p class="m-hero-eyebrow">' + fmtDate(todayIso) + (settings.nickname ? ' · ' + esc(settings.nickname) + '님' : '') + '</p>' +
             '<h1 class="m-hero-head">' +
               '<span class="mh-a">오늘은</span>' +
