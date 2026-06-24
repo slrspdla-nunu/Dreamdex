@@ -1701,6 +1701,9 @@ button { font-family: inherit; cursor: pointer; }
   .app .main.main-dashboard {
     background: var(--bg);
   }
+  /* 데스크톱 플로팅 패널용 margin-block(20px)이 모바일에선 상단바~본문 사이 틈을 만들어
+     그 틈으로 배경효과가 비쳐 띠가 생김 → 모바일에선 마진 제거 (#appShell로 특정성 ↑) */
+  #appShell .app.app-dashboard { margin-block: 0; }
   /* 임시보관함은 폼 상단 우측으로 이동 — 모바일에선 아이콘+배지만(라벨 숨김) */
   .drafts-link .drafts-label { display: none; }
   .drafts-link { padding-left: 11px; padding-right: 11px; }
