@@ -1616,22 +1616,16 @@ button { font-family: inherit; cursor: pointer; }
 .mh-a { font-size: clamp(22px, 6.5vw, 28px); font-weight: 500; color: var(--text-dim); margin-bottom: 2px; }
 .mh-b { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--text); }
 .mh-c { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--accent); }
-/* 떠 있는 달 — 입체 음영 + 분화구. 타이포 뒤로 살짝 겹침 */
+/* 떠 있는 보름달 — 매끈한 입체 음영 + 글로우 (얼룩 없이). 타이포 뒤로 살짝 겹침 */
 .m-hero-moon {
   position: absolute; z-index: 1; right: -6%; top: 28%;
   width: 152px; height: 152px; border-radius: 50%;
-  background:
-    /* 분화구(움푹한 그늘) — 위치별 작은 원 */
-    radial-gradient(circle 19px at 61% 39%, rgba(140,136,192,0.30), rgba(140,136,192,0.08) 70%, transparent),
-    radial-gradient(circle 12px at 40% 62%, rgba(140,136,192,0.26), transparent 80%),
-    radial-gradient(circle 9px at 73% 65%, rgba(140,136,192,0.24), transparent 80%),
-    radial-gradient(circle 7px at 50% 29%, rgba(140,136,192,0.22), transparent 80%),
-    /* 달 본체(좌상단 하이라이트 → 우하단 음영) */
-    radial-gradient(circle at 34% 30%, #ffffff, #edefff 54%, #d2d8ff 88%, #c3caf6);
+  /* 좌상단 밝게 → 우하단 그늘로 자연스럽게 굴곡진 구 */
+  background: radial-gradient(circle at 33% 29%, #ffffff 0%, #f1f2ff 44%, #dee1ff 74%, #c9d0f4 100%);
   box-shadow:
-    0 26px 60px -20px color-mix(in srgb, var(--accent) 60%, transparent),  /* 글로우 */
-    inset -12px -14px 28px rgba(116,112,168,0.32),                          /* 우하단 곡면 음영 */
-    inset 9px 11px 20px rgba(255,255,255,0.55);                             /* 좌상단 하이라이트 */
+    0 28px 64px -22px color-mix(in srgb, var(--accent) 55%, transparent),  /* 부드러운 글로우 */
+    inset -16px -18px 34px rgba(120,118,178,0.30),                          /* 우하단 곡면 그늘 */
+    inset 12px 13px 24px rgba(255,255,255,0.6);                             /* 좌상단 하이라이트 */
 }
 /* 오늘 기록 CTA */
 .m-cta {
