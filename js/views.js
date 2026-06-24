@@ -316,6 +316,57 @@
       return;
     }
 
+    // ── 모바일: 독립 다이어리 앱 레이아웃 (인사 → 기록 CTA → 요약 → 최근 일기 리스트) ──
+    if (window.innerWidth <= 860) {
+      var mSorted = dreams.slice().sort(byNewest);
+      var mRecent = mSorted.slice(0, 6);
+      var mGreet = (settings.nickname ? esc(settings.nickname) + '님, ' : '') + '오늘은';
+      var mMonth = todayIso.slice(0, 7);
+      var mMonthN = dreams.filter(function (d) { return (d.date || '').slice(0, 7) === mMonth; }).length;
+      var mWrote = dreams.some(function (d) { return d.date === todayIso; });
+      var mCard = function (d) {
+        var e = Store.emotionById(d.emotion) || {};
+        var hidden = isHidden(d);
+        var color = e.color || '#9180e8';
+        var raw = (d.content || '').replace(/\s+/g, ' ').trim();
+        var preview = hidden ? 'PIN을 입력하면 볼 수 있어요' : raw.slice(0, 60);
+        return '<button class="m-card" data-dream-id="' + d.id + '">' +
+          '<span class="m-card-bar" style="background:' + color + '"></span>' +
+          '<span class="m-card-body">' +
+            '<span class="m-card-head"><b class="m-card-title">' + (hidden ? '잠긴 꿈' : esc(d.title)) + '</b>' +
+            '<span class="m-card-date">' + fmtShort(d.date) + '</span></span>' +
+            '<span class="m-card-preview">' + esc(preview) + (!hidden && raw.length > 60 ? '…' : '') + '</span>' +
+            '<span class="m-card-emo" style="color:' + color + '">' +
+              (hidden ? global.Icons.ui('lock', { size: 13 }) : global.Icons.emotion(d.emotion, 13)) +
+              '<span>' + (hidden ? '잠김' : esc(e.label || '')) + '</span></span>' +
+          '</span></button>';
+      };
+      c.innerHTML =
+        '<div class="m-home view-enter">' +
+          '<header class="m-greet">' +
+            '<p class="m-greet-date">' + fmtDate(todayIso) + '</p>' +
+            '<h1 class="m-greet-title">' + mGreet + '<br>어떤 꿈을 꾸셨나요?</h1>' +
+          '</header>' +
+          '<button class="m-cta' + (mWrote ? ' done' : '') + '" data-go="/new">' +
+            '<span class="m-cta-ic">' + global.Icons.ui(mWrote ? 'check' : 'pen', { size: 20 }) + '</span>' +
+            '<span class="m-cta-tx"><b>' + (mWrote ? '오늘 꿈을 기록했어요' : '꿈 기록하기') + '</b>' +
+            '<small>' + (mWrote ? '더 떠오르면 마저 남겨요' : '잊기 전에 오늘의 꿈을 남겨요') + '</small></span>' +
+            '<span class="m-cta-arrow">' + global.Icons.ui('arrow', { size: 18 }) + '</span>' +
+          '</button>' +
+          '<div class="m-stats">' +
+            '<div class="m-stat"><b>' + dreams.length + '</b><span>기록한 꿈</span></div>' +
+            '<div class="m-stat"><b>' + dex.overall.percent + '%</b><span>수집률</span></div>' +
+            '<div class="m-stat"><b>' + mMonthN + '</b><span>이번 달</span></div>' +
+          '</div>' +
+          '<section class="m-recent">' +
+            '<div class="m-sec-head"><h2>최근 기록</h2>' +
+            '<button class="m-more" data-go="/dreams">전체 보기 ' + global.Icons.ui('arrow', { size: 13 }) + '</button></div>' +
+            '<div class="m-list">' + mRecent.map(mCard).join('') + '</div>' +
+          '</section>' +
+        '</div>';
+      return;
+    }
+
     var sorted = dreams.slice().sort(byNewest);
     var feat = sorted[0];
     var rest = sorted.slice(1, 5);
