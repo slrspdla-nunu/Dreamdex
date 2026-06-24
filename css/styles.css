@@ -16,8 +16,8 @@
 
 :root {
   /* 타입 스케일 토큰 (정수 px) — 모바일에선 @media (max-width:860px)에서 작은 단계만 키움 */
-  --fs-caption:  11px;   /* 날짜·작은 라벨 */
-  --fs-sm:       13px;   /* 보조 본문(지배적) */
+  --fs-caption:  15px;   /* 날짜·작은 라벨 (PC 최소 15) */
+  --fs-sm:       15px;   /* 보조 본문(지배적) (PC 최소 15) */
   --fs-body:     15px;   /* 본문 */
   --fs-lead:     17px;   /* 카드 제목·서브타이틀 */
   --fs-title-sm: 20px;
@@ -1602,11 +1602,10 @@ button { font-family: inherit; cursor: pointer; }
 @media (max-width: 860px) {
   /* 모바일 타이포 확대 (iOS풍) — 작은 단계 토큰만 키움. 데스크톱은 그대로. */
   :root {
-    --fs-caption: 13px;   /* 11 → 13 */
-    --fs-sm:      15px;   /* 13 → 15 (지배적 보조 본문) */
+    /* PC 최소 15 적용 후, 모바일은 본문/리드만 한 단계 더 키움 (캡션·sm은 base 15 상속) */
     --fs-body:    16px;   /* 15 → 16 (본문) */
     --fs-lead:    18px;   /* 17 → 18 (카드 제목·서브타이틀) */
-    /* 제목 단계(20/22/26/30/38)는 유지 — 모바일에서 이미 적정 */
+    /* 제목 단계(20/22/26/30/38)는 유지 */
   }
   .sidebar { display: none; }
   /* 모바일에선 패널/그림자 해제 — 전체 폭 사용 */
@@ -1917,7 +1916,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .main.main-dashboard {
   max-width: none;
-  padding: 16px 24px 16px;
+  padding: 8px 24px 8px;
   color: var(--text);
   background:
     radial-gradient(circle at 88% 7%, var(--accent-soft), transparent 28%),
@@ -1935,7 +1934,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .dd-hero {
-  min-height: 178px;
+  min-height: 168px;
   padding: 24px 36px;
   display: flex;
   align-items: center;
@@ -1969,7 +1968,7 @@ button { font-family: inherit; cursor: pointer; }
 .dd-record-cta {
   width: 100%;
   min-height: 58px;
-  margin: 12px 0 12px;
+  margin: 8px 0 8px;
   padding: 11px 18px;
   display: flex;
   align-items: center;
@@ -2004,7 +2003,7 @@ button { font-family: inherit; cursor: pointer; }
 .dd-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
-  gap: 12px;
+  gap: 10px;
   align-items: stretch;
 }
 
@@ -2199,7 +2198,7 @@ button { font-family: inherit; cursor: pointer; }
 
 .dd-message {
   min-height: 56px;
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 12px 18px;
   display: flex;
   align-items: center;
