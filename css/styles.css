@@ -1697,10 +1697,9 @@ button { font-family: inherit; cursor: pointer; }
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  /* 홈 대시보드: 불투명 var(--bg) 베이스만 제거하고 상단 강조 글로우는 유지
-     (.app 추가로 특정성 ↑ — 미디어쿼리 뒤에 오는 데스크톱 .main.main-dashboard 규칙을 이김) */
+  /* 홈(다이어리): 상단 강조 글로우 제거 — 깔끔한 배경 (.app 특정성 ↑) */
   .app .main.main-dashboard {
-    background: radial-gradient(circle at 88% 7%, var(--accent-soft), transparent 28%);
+    background: transparent;
   }
   /* 임시보관함은 폼 상단 우측으로 이동 — 모바일에선 아이콘+배지만(라벨 숨김) */
   .drafts-link .drafts-label { display: none; }
