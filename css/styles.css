@@ -2177,7 +2177,7 @@ button { font-family: inherit; cursor: pointer; }
 /* 썸네일 속 감정 아이콘 — 밝은/어두운 테마 모두 대비되도록 글자색과 섞음 */
 .rr-thumb svg { stroke: color-mix(in srgb, var(--thumb-color) 42%, var(--text)); opacity: 0.92; }
 .rr-main { display: flex; flex: 1; min-width: 0; flex-direction: column; }
-.dd-recent .rr-title { font-size: var(--fs-sm); font-weight: 650; }
+.dd-recent .rr-title { font-size: var(--fs-sm); font-weight: 550; }
 .rr-emotion { font-size: var(--fs-caption); }
 .dd-recent .rr-date { color: var(--text-faint); font-size: var(--fs-caption); }
 .rr-arrow { display: inline-flex; color: var(--text-faint); transform: rotate(0deg); }
