@@ -1598,84 +1598,6 @@ button { font-family: inherit; cursor: pointer; }
 .fab-new { display: none; }
 @keyframes fabBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
-/* ====================== 모바일 다이어리 홈 (네이티브 앱 레이아웃) ====================== */
-.m-home { display: flex; flex-direction: column; gap: 22px; }
-/* 인사 hero (에디토리얼 빅 타이포 + 떠 있는 달) */
-.m-hero {
-  position: relative; overflow: hidden;
-  min-height: 46vh; min-height: 46svh;
-  padding: 18px 18px 12px;
-  display: flex; flex-direction: column; justify-content: space-between;
-  border-radius: 22px;
-  background: var(--hero-grad);   /* PC hero와 동일 그라데이션 */
-}
-/* PC hero 일러스트(skyBand)를 그냥 한 겹 깔기 — 텍스트(z2)·달 오브(z1) 뒤(z0) */
-.m-hero-art { position: absolute; inset: 0; z-index: 0; }
-.m-hero-art svg { width: 100%; height: 100%; display: block; }
-.m-hero-eyebrow { position: relative; z-index: 2; margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--text-faint); }
-.m-hero-head {
-  position: relative; z-index: 2; margin: 0;
-  display: flex; flex-direction: column; gap: 4px;
-  line-height: 1.0; letter-spacing: -0.015em; word-break: keep-all;
-}
-.mh-a { font-size: clamp(22px, 6.5vw, 28px); font-weight: 500; color: var(--text-dim); margin-bottom: 2px; }
-.mh-b { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--text); }
-.mh-c { font-size: clamp(42px, 13vw, 60px); font-weight: 800; color: var(--accent); }
-/* 떠 있는 보름달 — 매끈한 입체 음영 + 글로우 (얼룩 없이). 타이포 뒤로 살짝 겹침 */
-.m-hero-moon {
-  position: absolute; z-index: 1; right: -6%; top: 28%;
-  width: 152px; height: 152px; border-radius: 50%;
-  /* 좌상단 밝게 → 우하단 그늘로 자연스럽게 굴곡진 구 */
-  background: radial-gradient(circle at 33% 29%, #ffffff 0%, #f1f2ff 44%, #dee1ff 74%, #c9d0f4 100%);
-  box-shadow:
-    0 28px 64px -22px color-mix(in srgb, var(--accent) 55%, transparent),  /* 부드러운 글로우 */
-    inset -16px -18px 34px rgba(120,118,178,0.30),                          /* 우하단 곡면 그늘 */
-    inset 12px 13px 24px rgba(255,255,255,0.6);                             /* 좌상단 하이라이트 */
-}
-/* 오늘 기록 CTA */
-.m-cta {
-  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;
-  padding: 17px 18px; border-radius: 18px; border: 0;
-  background: var(--hero-grad); color: var(--on-accent);
-  box-shadow: 0 12px 26px -14px var(--accent);
-  transition: transform 0.15s var(--ease);
-}
-.m-cta:active { transform: scale(0.99); }
-.m-cta-ic { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 13px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); }
-.m-cta-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.m-cta-tx b { font-size: var(--fs-lead); font-weight: 700; }
-.m-cta-tx small { font-size: var(--fs-sm); opacity: 0.92; }
-.m-cta-arrow { flex: 0 0 auto; opacity: 0.92; }
-.m-cta.done { background: var(--surface-2); color: var(--text); box-shadow: none; border: 1px solid var(--border); }
-.m-cta.done .m-cta-ic { background: color-mix(in srgb, var(--cat-place) 16%, transparent); color: var(--cat-place); }
-.m-cta.done .m-cta-tx small { color: var(--text-faint); opacity: 1; }
-/* 요약 스트립 */
-.m-stats { display: flex; gap: 10px; }
-.m-stat { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 14px 6px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); }
-.m-stat b { font-size: var(--fs-title); font-weight: 800; color: var(--text); line-height: 1.1; }
-.m-stat span { font-size: var(--fs-caption); color: var(--text-faint); }
-/* 최근 기록 */
-.m-recent { display: flex; flex-direction: column; gap: 12px; }
-.m-sec-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px; }
-.m-sec-head h2 { margin: 0; font-size: var(--fs-lead); font-weight: 700; color: var(--text); }
-.m-more { background: none; border: 0; color: var(--accent); font-size: var(--fs-sm); display: inline-flex; align-items: center; gap: 3px; padding: 4px; cursor: pointer; }
-.m-list { display: flex; flex-direction: column; gap: 10px; }
-/* 일기 카드 */
-.m-card {
-  display: flex; align-items: stretch; width: 100%; text-align: left; cursor: pointer; padding: 0;
-  border-radius: 16px; border: 1px solid var(--border); background: var(--surface-solid);
-  overflow: hidden; transition: transform 0.15s var(--ease);
-}
-.m-card:active { transform: scale(0.99); }
-.m-card-bar { flex: 0 0 5px; align-self: stretch; }
-.m-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 14px 16px; }
-.m-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.m-card-title { font-size: var(--fs-body); font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.m-card-date { flex: 0 0 auto; font-size: var(--fs-caption); color: var(--text-faint); }
-.m-card-preview { font-size: var(--fs-sm); color: var(--text-dim); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.m-card-emo { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-caption); font-weight: 600; margin-top: 1px; }
-.m-card-emo svg { width: 13px; height: 13px; }
-
 /* ====================== 반응형 ====================== */
 @media (max-width: 860px) {
   /* 모바일 타이포 확대 (iOS풍) — 작은 단계 토큰만 키움. 데스크톱은 그대로. */
@@ -1705,13 +1627,11 @@ button { font-family: inherit; cursor: pointer; }
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  /* 홈(다이어리): 깔끔한 단색 배경 — 뒤 배경효과/패턴이 hero에 비치지 않게 불투명 처리 */
+  /* 홈 대시보드: 불투명 var(--bg) 베이스만 제거하고 상단 강조 글로우는 유지
+     (.app 추가로 특정성 ↑ — 미디어쿼리 뒤에 오는 데스크톱 .main.main-dashboard 규칙을 이김) */
   .app .main.main-dashboard {
-    background: var(--bg);
+    background: radial-gradient(circle at 88% 7%, var(--accent-soft), transparent 28%);
   }
-  /* 데스크톱 플로팅 패널용 margin-block(20px)이 모바일에선 상단바~본문 사이 틈을 만들어
-     그 틈으로 배경효과가 비쳐 띠가 생김 → 모바일에선 마진 제거 (#appShell로 특정성 ↑) */
-  #appShell .app.app-dashboard { margin-block: 0; }
   /* 임시보관함은 폼 상단 우측으로 이동 — 모바일에선 아이콘+배지만(라벨 숨김) */
   .drafts-link .drafts-label { display: none; }
   .drafts-link { padding-left: 11px; padding-right: 11px; }
@@ -1751,7 +1671,8 @@ button { font-family: inherit; cursor: pointer; }
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; position: sticky; top: 0; z-index: 50;
-    background: var(--bg); border-bottom: 0;   /* 본문 배경과 동일 → 띠/이음새 제거 */
+    background: var(--bg-2); border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
   }
   .topbar .brand { padding: 0; }
 
@@ -2325,17 +2246,9 @@ button { font-family: inherit; cursor: pointer; }
 
 @media (max-width: 860px) {
   .main.main-dashboard { padding: 14px 14px 168px; }
-  /* 모바일: 히어로가 첫 화면을 채우는 큰 섹션 → 나머지는 아래로 스크롤 */
-  .dd-hero {
-    min-height: 60vh; min-height: 60svh;
-    padding: 24px 22px 30px;
-    background-position: 58% center;
-    align-items: flex-end;            /* 카피를 하단에 (앱 히어로 느낌) */
-  }
-  .dd-hero-copy { max-width: 100%; }
-  .dd-hero h1 { font-size: clamp(28px, 8vw, 36px); }
-  /* 하단 카피 가독용: 아래쪽을 어둡게(좌측 그라데이션 대체) */
-  .dd-hero-art::after { background: linear-gradient(0deg, rgba(13,11,26,0.52), rgba(13,11,26,0.12) 44%, transparent 72%); }
+  .dd-hero { min-height: 174px; padding: 24px 22px; background-position: 58% center; }
+  .dd-hero-copy { max-width: 72%; }
+  .dd-hero h1 { font-size: var(--fs-heading); }
   .dd-record-cta { min-height: 68px; padding: 11px 14px; }
   .dd-feature { min-height: 208px; padding: 22px; }
   .dd-feature-copy { width: 70%; }
@@ -2350,13 +2263,13 @@ button { font-family: inherit; cursor: pointer; }
   /* 모바일: 라벨 숨김 → 정렬도 달력·즐겨찾기와 같은 44px 원형 */
   .toolbar .sort-toggle { width: 44px; min-width: 44px; padding: 0; border-radius: 50%; }
   .dd-hero {
-    min-height: 58vh; min-height: 58svh;
-    padding: 22px 18px 28px;
+    min-height: 164px;
+    padding: 22px 18px;
     background-position: 62% center;
   }
-  .dd-hero-copy { max-width: 100%; }
+  .dd-hero-copy { max-width: 82%; }
   .dd-hero-date { font-size: var(--fs-caption); }
-  .dd-hero h1 { max-width: none; font-size: clamp(26px, 8vw, 32px); }
+  .dd-hero h1 { max-width: 260px; font-size: var(--fs-title); }
   .dd-hero p { font-size: var(--fs-sm); }
   .dd-cta-copy b { font-size: var(--fs-body); }
   .dd-cta-copy small { font-size: var(--fs-caption); }
