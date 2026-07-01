@@ -63,11 +63,11 @@
 
   /* ------------------------------ 설정 ------------------------------- */
   var VALID_THEMES = ['mongsil', 'pool', 'observatory', 'manuscript', 'specimen', 'amethyst', 'dawn', 'abyss',
-                      'mist', 'lilac', 'mint'];
+                      'mist', 'lilac', 'mint', 'mono'];
   var VALID_PATTERNS = ['none', 'dots', 'grid', 'diagonal', 'crosshatch', 'waves'];
   var VALID_EFFECTS = ['none', 'stars', 'shooting', 'aurora', 'petals', 'bubbles',
                        'softdots', 'glow', 'gradient', 'particles'];
-  var LIGHT_THEMES = ['mongsil', 'pool', 'manuscript', 'dawn', 'mist', 'lilac', 'mint'];
+  var LIGHT_THEMES = ['mongsil', 'pool', 'manuscript', 'dawn', 'mist', 'lilac', 'mint', 'mono'];
   function isLightTheme(t) { return LIGHT_THEMES.indexOf(t) !== -1; }
   var DEFAULT_SETTINGS = {
     theme: 'mongsil',
@@ -303,7 +303,9 @@
     { id: 'lilac',       label: '라일락', desc: '은은한 라일락빛',
       swatch: ['#f1ecf6', '#322a3d', '#8662b5'] },
     { id: 'mint',        label: '민트', desc: '산뜻한 박하빛',
-      swatch: ['#e9f3ee', '#1f3329', '#2f9d78'] }
+      swatch: ['#e9f3ee', '#1f3329', '#2f9d78'] },
+    { id: 'mono',        label: '모노', desc: '깔끔한 흑과 백',
+      swatch: ['#ffffff', '#111111', '#767676'] }
   ];
 
   /* 배경 패턴 메타 (설정 화면 피커용) */

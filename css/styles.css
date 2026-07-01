@@ -139,6 +139,36 @@
   --sky-1: #20262e; --sky-2: #2c343e; --moon: #cdd2d8;
 }
 
+/* ===== 모노 — 깔끔한 흑과 백 ===== */
+[data-theme="mono"] {
+  --bg:        #ffffff;
+  --bg-2:      #f5f5f6;
+  --surface:   rgba(255, 255, 255, 0.72);
+  --surface-2: rgba(245, 245, 246, 0.92);
+  --surface-solid: #ffffff;
+  --border:    rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.28);
+  --text:      #0f0f0f;
+  --text-dim:  #545454;
+  --text-faint:#8c8c8c;
+  --accent:    #111111;            /* 잉크 블랙 */
+  --accent-2:  #666666;            /* 중간 회색 (보조) */
+  --accent-soft: rgba(0, 0, 0, 0.06);
+  --on-accent: #ffffff;            /* 검정 강조색 위 텍스트 = 흰색 */
+  --danger:    #b3261e;
+  --shadow:    0 12px 34px rgba(0, 0, 0, 0.10);
+  --glow:      0 0 0 rgba(0,0,0,0);
+  --star-opacity: 0;
+  --grain-opacity: 0.035;
+  --grain-blend: multiply;
+  --vignette: radial-gradient(120% 90% at 50% -10%, transparent 64%, rgba(0,0,0,0.05));
+  /* 카테고리·노드는 무채색 3단계로 (지도·도감 구분은 유지) */
+  --cat-place: #3a3a3a; --cat-person: #767676; --cat-situation: #ababab;
+  --node-place: #3a3a3a; --node-person: #767676; --node-situation: #ababab;
+  --sky-1: #ececee; --sky-2: #f7f7f8; --moon: #d7d7dc;
+  --hero-grad: linear-gradient(115deg, #1a1a1a 0%, #454545 100%);
+}
+
 /* ===== 자수정 — 보랏빛 꿈안개 ===== */
 [data-theme="amethyst"] {
   --bg:        #0d0816;
