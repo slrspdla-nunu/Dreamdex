@@ -1812,6 +1812,13 @@ button { font-family: inherit; cursor: pointer; }
   .main.main-dashboard { overflow: hidden; display: flex; flex-direction: column; justify-content: safe center; }
 }
 
+/* 태블릿 가로(≤1200px): 홈 셸(사이드바+메인)을 아카이브 스크롤 셸과 동일한 크기·여백으로 통일.
+   이 높이에선 홈 콘텐츠(≈895px)가 안 맞으므로 클리핑 대신 메인이 내부 스크롤(아카이브와 동일 동작). */
+@media (min-width: 861px) and (max-width: 1200px) {
+  .app.app-dashboard { height: min(905px, calc(100vh - 40px)); margin-block: 20px; }
+  .main.main-dashboard { display: block; overflow: visible; overflow-y: auto; }
+}
+
 .app .sidebar {
   padding: 28px 15px 22px;
   gap: 3px;
