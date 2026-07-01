@@ -165,13 +165,7 @@
   /* 카테고리·노드는 무채색 3단계로 (지도·도감 구분은 유지) */
   --cat-place: #3a3a3a; --cat-person: #767676; --cat-situation: #ababab;
   --node-place: #3a3a3a; --node-person: #767676; --node-situation: #ababab;
-  /* 감정 6종도 무채색 — 명도 6단계로 벌려 차트·칩에서 구분 유지 */
-  --emo-happy:   #2e2e2e;
-  --emo-wonder:  #4d4d4d;
-  --emo-anxiety: #6b6b6b;
-  --emo-fear:    #8a8a8a;
-  --emo-sadness: #a8a8a8;
-  --emo-longing: #c4c4c4;
+  /* 감정색은 기본(강조색 혼합) 유지 — 차트·칩 구분을 위해 색을 남김 */
   --sky-1: #ececee; --sky-2: #f7f7f8; --moon: #d7d7dc;
   --hero-grad: linear-gradient(115deg, #1a1a1a 0%, #454545 100%);
 }
